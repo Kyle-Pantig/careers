@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Authentication & RBAC Models
+// ============================================
+
+enum EmailTokenType {
+  VERIFICATION
+  PASSWORD_RESET
+  MAGIC_LINK
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  firstName     String
+  lastName      String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  contactNumber String?   // Optional contact number
+  address       String?   // Optional address
+  resumeUrl       String?   // URL to resume in storage
+  resumeFileName  String?   // Original filename of resume
+  resumeUploadedAt DateTime? // When the resume was uploaded
+
+  passwordHash String
+  lastLoginAt  DateTime?
+  isActive     Boolean   @default(true)
+
+  roles        UserRole[]
+  applications JobApplication[]
+  savedJobs    SavedJob[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique // admin | staff | user
+  description String?
+
+  users UserRole[]
+
+  createdAt DateTime @default(now())
+
+  @@map("roles")
+}
+
+model UserRole {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  roleId String @db.Uuid
+
+  permissions Json @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model EmailToken {
+  id        String         @id @default(uuid()) @db.Uuid
+  email     String
+  token     String         @unique
+  type      EmailTokenType
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("email_tokens")
+}
+
+// ============================================
+// Jobs Models
+// ============================================
+
+enum WorkType {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum ShiftType {
+  DAY
+  NIGHT
+  ROTATING
+  FLEXIBLE
+}
+
+enum SalaryPeriod {
+  HOURLY
+  MONTHLY
+  YEARLY
+}
+
+enum Currency {
+  USD
+  EUR
+  GBP
+  PHP
+  JPY
+  AUD
+  CAD
+  SGD
+  INR
+  CNY
+}
+
+model Industry {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  jobs Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("industries")
+}
+
+model Job {
+  id                String       @id @default(uuid()) @db.Uuid
+  jobNumber         String       @unique // e.g., JN-0001
+  title             String
+  description       String
+  industryId        String       @db.Uuid
+  location          String
+  workType          WorkType
+  shiftType         ShiftType    @default(DAY)
+  experienceMin     Int          @default(0)  // Minimum years of experience
+  experienceMax     Int?                      // Maximum years (null = no max, e.g., "5+ years")
+  salaryMin         Int?                      // Minimum salary
+  salaryMax         Int?                      // Maximum salary
+  salaryCurrency    Currency     @default(USD)
+  salaryPeriod      SalaryPeriod @default(YEARLY)
+  isPublished       Boolean      @default(false)
+  publishedAt       DateTime?
+  expiresAt         DateTime?
+
+  industry     Industry @relation(fields: [industryId], references: [id])
+  applications JobApplication[]
+  savedBy      SavedJob[]
+  views        JobView[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("jobs")
+}
+
+model JobView {
+  id        String   @id @default(uuid()) @db.Uuid
+  jobId     String   @db.Uuid
+  userId    String?  @db.Uuid  // null for guest users
+  ipAddress String?            // for guest users (hashed for privacy)
+  userAgent String?            // optional: browser info
+
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Ensure one view per user or IP per job
+  @@unique([jobId, userId])
+  @@unique([jobId, ipAddress])
+  @@map("job_views")
+}
+
+model JobApplication {
+  id           String   @id @default(uuid()) @db.Uuid
+  jobId        String   @db.Uuid
+  
+  // For authenticated users (nullable for guests)
+  userId       String?  @db.Uuid
+  
+  // Applicant details (filled by guest or from user profile)
+  firstName    String
+  lastName     String
+  email        String
+  contactNumber String
+  address      String   // Applicant's address
+  
+  // Resume stored in Supabase storage
+  resumeUrl    String   // URL to the resume in storage
+  resumeFileName String // Original filename
+  
+  status       String   @default("pending") // pending, reviewed, shortlisted, rejected, hired
+  notes        String?  // Admin notes
+
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Prevent duplicate applications from same user or email per job
+  @@unique([userId, jobId])
+  @@unique([email, jobId])
+  @@map("job_applications")
+}
+
+model SavedJob {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  jobId  String @db.Uuid
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@map("saved_jobs")
+}
