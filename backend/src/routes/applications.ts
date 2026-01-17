@@ -1,6 +1,8 @@
 import { Elysia, t } from 'elysia';
 import { prisma } from '../lib/prisma';
 import { uploadResume } from '../lib/storage';
+import { authMiddleware } from '../middleware/auth';
+import { PERMISSIONS } from '../../../shared/validators/permissions';
 import { 
   sendApplicationConfirmationEmail, 
   sendCustomEmail, 
@@ -11,6 +13,7 @@ import {
 } from '../lib/email';
 
 export const applicationRoutes = new Elysia({ prefix: '/applications' })
+  .use(authMiddleware)
   // Submit job application
   .post(
     '/',
@@ -183,6 +186,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       };
     },
     {
+      hasPermission: PERMISSIONS.APPLICATIONS_VIEW,
       query: t.Object({
         page: t.Optional(t.String()),
         limit: t.Optional(t.String()),
@@ -236,6 +240,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       };
     },
     {
+      hasPermission: PERMISSIONS.APPLICATIONS_VIEW,
       params: t.Object({
         jobId: t.String(),
       }),
@@ -255,7 +260,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
       const [applications, total] = await Promise.all([
-        prisma.jobApplication.findMany({
+prisma.jobApplication.findMany({
           where: { userId: params.userId },
           skip,
           take: parseInt(limit),
@@ -268,12 +273,13 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
                 jobNumber: true,
                 location: true,
                 workType: true,
+                jobType: true,
                 industry: {
                   select: {
                     name: true,
                   },
                 },
-              },
+              } as Record<string, unknown>,
             },
           },
         }),
@@ -301,10 +307,10 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
     }
   )
 
-  // Get single application
+  // Get single application (users can view their own, staff/admin can view all)
   .get(
     '/:id',
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       const application = await prisma.jobApplication.findUnique({
         where: { id: params.id },
         include: {
@@ -315,6 +321,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
               jobNumber: true,
               location: true,
               workType: true,
+              jobType: true,
               salaryMin: true,
               salaryMax: true,
               salaryPeriod: true,
@@ -324,7 +331,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
                   name: true,
                 },
               },
-            },
+            } as Record<string, unknown>,
           },
           user: {
             select: {
@@ -340,6 +347,20 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       if (!application) {
         set.status = 404;
         return { error: 'Application not found' };
+      }
+
+      // Check if user is the owner of the application
+      // Allow access if: userId matches OR email matches (for guest applications)
+      const appData = application as typeof application & { email: string; userId: string | null };
+      const userData = user as { userId?: string; email?: string } | null;
+      const isOwner = userData && (
+        appData.userId === userData.userId || 
+        appData.email === userData.email
+      );
+      
+      if (!isOwner) {
+        set.status = 403;
+        return { error: 'You do not have permission to view this application' };
       }
 
       return { application };
@@ -412,6 +433,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       };
     },
     {
+      hasPermission: PERMISSIONS.APPLICATIONS_EDIT,
       params: t.Object({
         id: t.String(),
       }),
@@ -456,6 +478,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
         hasApplied: !!application,
         application: application
           ? {
+              id: application.id,
               status: application.status,
               createdAt: application.createdAt,
             }

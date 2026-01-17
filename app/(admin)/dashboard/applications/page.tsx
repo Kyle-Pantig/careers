@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
 import { getAdminApplications, updateApplicationStatus, type Application } from '@/lib/applications';
+import { PERMISSIONS } from '@/shared/validators/permissions';
+import { AccessDenied } from '@/components/admin/access-denied';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +71,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function ApplicationsPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   
   const [search, setSearch] = useState('');
@@ -88,6 +91,14 @@ export default function ApplicationsPage() {
       { label: 'Applications' },
     ]);
   }, [setBreadcrumbs]);
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.APPLICATIONS_VIEW)) {
+    return <AccessDenied />;
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['applications', 'all', { status: statusFilter, search }],
@@ -302,56 +313,62 @@ export default function ApplicationsPage() {
                               <FileText className="mr-2 h-4 w-4" />
                               View Resume
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEmailApplication(application);
-                                setEmailDialogOpen(true);
-                              }}
-                            >
-                              <Mail className="mr-2 h-4 w-4" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {/* Status progression: pending → reviewed → shortlisted → hired (one-way) */}
-                            {(() => {
-                              const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
-                              const currentIndex = statusOrder.indexOf(application.status);
-                              const isRejected = application.status === 'rejected';
-                              
-                              return (
-                                <>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(application, 'reviewed')}
-                                    disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Mark as Reviewed
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(application, 'shortlisted')}
-                                    disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
-                                  >
-                                    <Star className="mr-2 h-4 w-4" />
-                                    Shortlist
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(application, 'hired')}
-                                    disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
-                                  >
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    Mark as Hired
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleStatusChange(application, 'rejected')}
-                                    disabled={isRejected}
-                                    className="text-destructive"
-                                  >
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Reject
-                                  </DropdownMenuItem>
-                                </>
-                              );
-                            })()}
+                            {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEmailApplication(application);
+                                  setEmailDialogOpen(true);
+                                }}
+                              >
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Email
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                {/* Status progression: pending → reviewed → shortlisted → hired (one-way) */}
+                                {(() => {
+                                  const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
+                                  const currentIndex = statusOrder.indexOf(application.status);
+                                  const isRejected = application.status === 'rejected';
+                                  
+                                  return (
+                                    <>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleStatusChange(application, 'reviewed')}
+                                        disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
+                                      >
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Mark as Reviewed
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleStatusChange(application, 'shortlisted')}
+                                        disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
+                                      >
+                                        <Star className="mr-2 h-4 w-4" />
+                                        Shortlist
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleStatusChange(application, 'hired')}
+                                        disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
+                                      >
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Mark as Hired
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleStatusChange(application, 'rejected')}
+                                        disabled={isRejected}
+                                        className="text-destructive"
+                                      >
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Reject
+                                      </DropdownMenuItem>
+                                    </>
+                                  );
+                                })()}
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

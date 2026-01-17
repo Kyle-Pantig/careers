@@ -28,7 +28,7 @@ import {
   MapPin,
   Building2,
 } from 'lucide-react';
-import { WORK_TYPE_LABELS } from '@/shared/validators';
+import { WORK_TYPE_LABELS, JOB_TYPE_LABELS } from '@/shared/validators';
 
 const applicationSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -48,12 +48,16 @@ export default function JobApplyPage() {
 
   const { data: job, isLoading: jobLoading, isError } = useJobByNumber(jobNumber);
 
+  // Admin/staff cannot apply for jobs
+  const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [checkingApplication, setCheckingApplication] = useState(true);
   const [useProfileResume, setUseProfileResume] = useState(false);
   const [loadingProfileResume, setLoadingProfileResume] = useState(false);
@@ -119,19 +123,27 @@ export default function JobApplyPage() {
     }
   }, [useProfileResume, user?.resumeUrl]);
 
+  // Redirect admin/staff away - they cannot apply
+  useEffect(() => {
+    if (isAdminOrStaff) {
+      router.push(`/jobs/${jobNumber}`);
+    }
+  }, [isAdminOrStaff, router, jobNumber]);
+
   // Check if user has already applied
   useEffect(() => {
-    if (job && user) {
+    if (job && user && !isAdminOrStaff) {
       checkApplicationStatus(jobNumber, { userId: user.id })
         .then((result) => {
           setHasApplied(result.hasApplied);
+          setApplicationId(result.application?.id || null);
         })
         .catch(() => {})
         .finally(() => setCheckingApplication(false));
     } else if (job) {
       setCheckingApplication(false);
     }
-  }, [job, jobNumber, user]);
+  }, [job, jobNumber, user, isAdminOrStaff]);
 
   // Redirect if job not found
   useEffect(() => {
@@ -216,6 +228,11 @@ export default function JobApplyPage() {
     }
   };
 
+  // Admin/staff cannot apply - show nothing while redirecting
+  if (isAdminOrStaff) {
+    return null;
+  }
+
   // Loading state
   if (jobLoading || checkingApplication) {
     return (
@@ -248,12 +265,19 @@ export default function JobApplyPage() {
                 <p className="text-muted-foreground mb-6">
                   You have already submitted an application for this position.
                 </p>
-                <Button asChild>
-                  <Link href={`/jobs/${jobNumber}`}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Job Details
-                  </Link>
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button variant="outline" asChild>
+                    <Link href={`/jobs/${jobNumber}`}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Job
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href={applicationId ? `/my-applications/${applicationId}` : '/my-applications'}>
+                      View Application
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -332,6 +356,9 @@ export default function JobApplyPage() {
               <span className="flex items-center gap-1">
                 <Briefcase className="h-4 w-4" />
                 {WORK_TYPE_LABELS[job.workType]}
+              </span>
+              <span className="text-sm border px-2 py-0.5 rounded">
+                {JOB_TYPE_LABELS[job.jobType]}
               </span>
             </div>
           </CardContent>

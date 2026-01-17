@@ -1,6 +1,30 @@
+import { Suspense } from "react"
 import { LoginForm } from "@/components/auth"
 import { GalleryVerticalEnd } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
+function LoginFormSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-1">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-40 mt-1" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-lg" />
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   return (
@@ -16,7 +40,9 @@ export default function LoginPage() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
-            <LoginForm />
+            <Suspense fallback={<LoginFormSkeleton />}>
+              <LoginForm />
+            </Suspense>
           </div>
         </div>
       </div>

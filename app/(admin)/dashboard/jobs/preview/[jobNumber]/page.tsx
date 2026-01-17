@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -25,13 +25,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useJobByNumber, useToggleJobPublish } from '@/hooks';
-import { WORK_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS } from '@/shared/validators';
+import { WORK_TYPE_LABELS, JOB_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS, PERMISSIONS } from '@/shared/validators';
 import { Badge } from '@/components/ui/badge';
+import { AccessDenied } from '@/components/admin/access-denied';
 
 export default function JobPreviewPage() {
   const params = useParams();
   const router = useRouter();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
 
   const jobNumber = params.jobNumber as string;
 
@@ -103,6 +105,14 @@ export default function JobPreviewPage() {
     }
     return null;
   };
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.JOBS_VIEW)) {
+    return <AccessDenied />;
+  }
 
   if (isLoading) {
     return (
@@ -257,6 +267,14 @@ export default function JobPreviewPage() {
                 <div>
                   <p className="text-sm font-medium">Work Type</p>
                   <p className="text-sm text-muted-foreground">{WORK_TYPE_LABELS[job.workType]}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="flex items-start gap-3">
+                <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Job Type</p>
+                  <p className="text-sm text-muted-foreground">{JOB_TYPE_LABELS[job.jobType]}</p>
                 </div>
               </div>
               <Separator />

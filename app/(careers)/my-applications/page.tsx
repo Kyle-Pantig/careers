@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -30,7 +30,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { WORK_TYPE_LABELS } from '@/shared/validators';
+import { WORK_TYPE_LABELS, JOB_TYPE_LABELS } from '@/shared/validators';
 import type { SavedJob } from '@/lib/saved-jobs';
 
 // Modern status configuration with gradient backgrounds
@@ -133,18 +133,23 @@ function ApplicationCard({ application }: { application: Application }) {
         </div>
 
         {/* Meta Info */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           {application.job?.location && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{application.job.location}</span>
-            </div>
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <MapPin className="h-3 w-3" />
+              {application.job.location}
+            </Badge>
           )}
           {application.job?.workType && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Briefcase className="h-3.5 w-3.5" />
-              <span>{WORK_TYPE_LABELS[application.job.workType as keyof typeof WORK_TYPE_LABELS]}</span>
-            </div>
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <Briefcase className="h-3 w-3" />
+              {WORK_TYPE_LABELS[application.job.workType as keyof typeof WORK_TYPE_LABELS]}
+            </Badge>
+          )}
+          {application.job?.jobType && (
+            <Badge variant="outline" className="text-xs font-normal">
+              {JOB_TYPE_LABELS[application.job.jobType as keyof typeof JOB_TYPE_LABELS]}
+            </Badge>
           )}
           {/* Status */}
           {isHired ? (
@@ -169,7 +174,17 @@ function ApplicationCard({ application }: { application: Application }) {
             className="flex-1 h-9 text-muted-foreground hover:text-foreground rounded-full"
           >
             <Link href={`/jobs/${application.job?.jobNumber}`}>
-              View Details
+              View Job
+            </Link>
+          </Button>
+          <Button 
+            size="sm" 
+            variant="secondary"
+            asChild 
+            className="flex-1 h-9 rounded-full"
+          >
+            <Link href={`/my-applications/${application.id}`}>
+              View Application
             </Link>
           </Button>
         </div>
@@ -178,14 +193,16 @@ function ApplicationCard({ application }: { application: Application }) {
   );
 }
 
-function SavedJobCard({ savedJob, onUnsave, isRemoving }: { 
+function SavedJobCard({ savedJob, onUnsave, isRemoving, appliedJobIds }: { 
   savedJob: SavedJob; 
   onUnsave: (jobId: string) => void;
   isRemoving: boolean;
+  appliedJobIds: Map<string, string>;
 }) {
   const job = savedJob.job;
   const isExpired = job.expiresAt ? new Date(job.expiresAt) < new Date() : false;
   const isActive = job.isPublished && !isExpired;
+  const hasApplied = appliedJobIds.has(job.id);
   
   return (
     <Card className={`py-0 group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 ${
@@ -251,18 +268,23 @@ function SavedJobCard({ savedJob, onUnsave, isRemoving }: {
         </div>
 
         {/* Meta Info */}
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           {job.location && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{job.location}</span>
-            </div>
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <MapPin className="h-3 w-3" />
+              {job.location}
+            </Badge>
           )}
           {job.workType && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Briefcase className="h-3.5 w-3.5" />
-              <span>{WORK_TYPE_LABELS[job.workType as keyof typeof WORK_TYPE_LABELS]}</span>
-            </div>
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <Briefcase className="h-3 w-3" />
+              {WORK_TYPE_LABELS[job.workType as keyof typeof WORK_TYPE_LABELS]}
+            </Badge>
+          )}
+          {job.jobType && (
+            <Badge variant="outline" className="text-xs font-normal">
+              {JOB_TYPE_LABELS[job.jobType as keyof typeof JOB_TYPE_LABELS]}
+            </Badge>
           )}
         </div>
 
@@ -272,13 +294,33 @@ function SavedJobCard({ savedJob, onUnsave, isRemoving }: {
             variant="outline" 
             size="sm" 
             asChild 
-            className="h-9 text-muted-foreground hover:text-foreground rounded-full"
+            className="flex-1 h-9 text-muted-foreground hover:text-foreground rounded-full"
           >
             <Link href={`/jobs/${job.jobNumber}`}>
               View Details
             </Link>
           </Button>
-          {isActive ? (
+          {!isActive ? (
+            <Button 
+              size="sm" 
+              variant="destructive"
+              className="flex-1 h-9 rounded-full"
+              disabled
+            >
+              Expired
+            </Button>
+          ) : hasApplied ? (
+            <Button 
+              size="sm" 
+              variant="secondary"
+              asChild 
+              className="flex-1 h-9 rounded-full"
+            >
+              <Link href={`/my-applications/${appliedJobIds.get(job.id)}`}>
+                View Application
+              </Link>
+            </Button>
+          ) : (
             <Button 
               size="sm" 
               asChild 
@@ -287,15 +329,6 @@ function SavedJobCard({ savedJob, onUnsave, isRemoving }: {
               <Link href={`/jobs/${job.jobNumber}/apply`}>
                 Apply Now
               </Link>
-            </Button>
-          ) : (
-            <Button 
-              size="sm" 
-              variant="destructive"
-              className="flex-1 h-9 rounded-full"
-              disabled
-            >
-              Expired
             </Button>
           )}
         </div>
@@ -340,12 +373,16 @@ export default function MyApplicationsPage() {
   const tabFromUrl = searchParams.get('tab');
   const defaultTab = tabFromUrl === 'saved' ? 'saved' : 'applications';
 
-  // Redirect to login if not authenticated
+  const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
+
+  // Redirect to login if not authenticated, or to dashboard if admin/staff
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login?redirect=/my-applications');
+    } else if (!authLoading && isAdminOrStaff) {
+      router.push('/dashboard');
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, isAdminOrStaff]);
 
   // Fetch applications
   const { data: applicationsData, isLoading: loadingApplications } = useQuery({
@@ -359,6 +396,11 @@ export default function MyApplicationsPage() {
   const unsaveJobMutation = useUnsaveJob();
 
   const applications = applicationsData?.applications || [];
+  
+  // Get applied job IDs for quick lookup (jobId -> applicationId)
+  const appliedJobIds = useMemo(() => {
+    return new Map(applications.map((app) => [app.jobId, app.id]));
+  }, [applications]);
 
   const handleUnsaveJob = async (jobId: string) => {
     setRemovingJobId(jobId);
@@ -373,13 +415,13 @@ export default function MyApplicationsPage() {
     return (
       <MaxWidthLayout className="py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       </MaxWidthLayout>
     );
   }
 
-  if (!user) {
+  if (!user || isAdminOrStaff) {
     return null;
   }
 
@@ -410,7 +452,7 @@ export default function MyApplicationsPage() {
               className="flex-1 gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm h-10"
             >
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Applications</span>
+              <span>Applications</span>
               {applications.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {applications.length}
@@ -422,7 +464,7 @@ export default function MyApplicationsPage() {
               className="flex-1 gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm h-10"
             >
               <Bookmark className="h-4 w-4" />
-              <span className="hidden sm:inline">Saved Jobs</span>
+              <span>Saved Jobs</span>
               {savedJobs.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {savedJobs.length}
@@ -492,6 +534,7 @@ export default function MyApplicationsPage() {
                     savedJob={savedJob} 
                     onUnsave={handleUnsaveJob}
                     isRemoving={removingJobId === savedJob.job.id}
+                    appliedJobIds={appliedJobIds}
                   />
                 ))}
               </div>

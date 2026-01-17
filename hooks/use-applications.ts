@@ -3,8 +3,19 @@ import {
   getJobApplications,
   getApplication,
   updateApplicationStatus,
+  getUserApplications,
   type Application,
 } from '@/lib/applications';
+
+// Fetch user's applications
+export function useUserApplications(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['applications', 'user', userId],
+    queryFn: () => getUserApplications(userId!, { limit: 100 }),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
 
 // Fetch applications for a specific job
 export function useJobApplications(

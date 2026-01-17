@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,10 +44,12 @@ import {
 import { toast } from 'sonner';
 import { useAdminJobs, useDeleteJob, useToggleJobPublish } from '@/hooks';
 import { type WorkType } from '@/lib/jobs';
-import { WORK_TYPE_LABELS } from '@/shared/validators';
+import { WORK_TYPE_LABELS, PERMISSIONS } from '@/shared/validators';
+import { AccessDenied } from '@/components/admin/access-denied';
 
 export default function JobsPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
   const [search, setSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [workTypeFilter, setWorkTypeFilter] = useState<string>('all');
@@ -116,6 +118,14 @@ export default function JobsPage() {
     setPage(1);
   }, [workTypeFilter, publishedFilter]);
 
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.JOBS_VIEW)) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -126,12 +136,14 @@ export default function JobsPage() {
             Manage job postings and their visibility
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/jobs/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Job
-          </Link>
-        </Button>
+{hasPermission(PERMISSIONS.JOBS_CREATE) && (
+          <Button asChild>
+            <Link href="/dashboard/jobs/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Job
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -191,14 +203,18 @@ export default function JobsPage() {
               <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">No jobs found</h3>
               <p className="text-muted-foreground mb-4">
-                Get started by creating your first job posting.
+                {hasPermission(PERMISSIONS.JOBS_CREATE) 
+                  ? 'Get started by creating your first job posting.'
+                  : 'No job postings available.'}
               </p>
-              <Button asChild>
-                <Link href="/dashboard/jobs/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Job
-                </Link>
-              </Button>
+              {hasPermission(PERMISSIONS.JOBS_CREATE) && (
+                <Button asChild>
+                  <Link href="/dashboard/jobs/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Job
+                  </Link>
+                </Button>
+              )}
             </div>
           ) : (
             <ScrollArea className="w-full">
@@ -258,38 +274,48 @@ export default function JobsPage() {
                                 Preview
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/dashboard/jobs/${job.id}/edit`}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleTogglePublish(job.id)}
-                              disabled={togglePublishMutation.isPending}
-                            >
-                              {job.isPublished ? (
-                                <>
-                                  <EyeOff className="mr-2 h-4 w-4" />
-                                  Unpublish
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Publish
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDelete(job.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
+                            {hasPermission(PERMISSIONS.JOBS_EDIT) && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/jobs/${job.id}/edit`}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission(PERMISSIONS.JOBS_PUBLISH) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleTogglePublish(job.id)}
+                                  disabled={togglePublishMutation.isPending}
+                                >
+                                  {job.isPublished ? (
+                                    <>
+                                      <EyeOff className="mr-2 h-4 w-4" />
+                                      Unpublish
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Publish
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {hasPermission(PERMISSIONS.JOBS_DELETE) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleDelete(job.id)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context';
 
 interface RouteGuardProps {
@@ -91,19 +91,27 @@ export function GuestGuard({
 }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (isLoading) return;
 
-    // If user is logged in, redirect them based on their role
+    // If user is logged in, redirect them
     if (user) {
+      // Admin/staff always go to dashboard, regardless of redirect URL
       if (user.roles.includes('admin') || user.roles.includes('staff')) {
         router.push('/dashboard');
       } else {
-        router.push(redirectTo);
+        // For regular users, check for redirect URL in query params
+        const redirectUrl = searchParams.get('redirect');
+        if (redirectUrl) {
+          router.push(redirectUrl);
+        } else {
+          router.push(redirectTo);
+        }
       }
     }
-  }, [user, isLoading, redirectTo, router]);
+  }, [user, isLoading, redirectTo, router, searchParams]);
 
   if (isLoading) {
     return (

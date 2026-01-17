@@ -82,31 +82,44 @@ async function main() {
   // Create default admin user
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
 
-  const adminUser = await prisma.user.upsert({
+  // Check if admin already exists
+  const existingAdmin = await prisma.user.findUnique({
     where: { email: ADMIN_EMAIL },
-    update: {},
-    create: {
-      firstName: 'Admin',
-      lastName: 'User',
-      email: ADMIN_EMAIL,
-      emailVerified: true,
-      passwordHash,
-      roles: {
-        create: {
-          roleId: adminRole.id,
-          permissions: JSON.stringify({ canDeleteAdmin: false }),
-        },
-      },
-    },
-    include: {
-      roles: { include: { role: true } },
-    },
+    include: { roles: { include: { role: true } } },
   });
+
+  let adminUser: { id: string; email: string; roles: Array<{ role: { name: string } }> };
+
+  if (existingAdmin) {
+    adminUser = existingAdmin;
+  } else {
+    // Create admin with role - use raw query approach to handle permissionLevel
+    const newAdmin = await prisma.user.create({
+      data: {
+        firstName: 'Admin',
+        lastName: 'User',
+        email: ADMIN_EMAIL,
+        emailVerified: true,
+        passwordHash,
+      },
+    });
+
+    // Create user role separately
+    await prisma.$executeRaw`
+      INSERT INTO user_roles (id, user_id, role_id, permission_level, created_at)
+      VALUES (gen_random_uuid(), ${newAdmin.id}::uuid, ${adminRole.id}::uuid, NULL, NOW())
+    `;
+
+    adminUser = await prisma.user.findUniqueOrThrow({
+      where: { id: newAdmin.id },
+      include: { roles: { include: { role: true } } },
+    });
+  }
 
   console.log('✅ Admin user created:', {
     id: adminUser.id,
     email: adminUser.email,
-    roles: adminUser.roles.map((r: { role: { name: string } }) => r.role.name),
+    roles: adminUser.roles.map((r) => r.role.name),
   });
 
   // Get industry IDs for jobs
@@ -125,7 +138,7 @@ async function main() {
   const constructionIndustry = await prisma.industry.findUnique({ where: { name: 'Construction' } });
   const legalIndustry = await prisma.industry.findUnique({ where: { name: 'Legal' } });
 
-  // Create sample jobs (25 total with PHP currency)
+  // Create sample jobs (28 total with PHP currency)
   const jobs = [
     {
       jobNumber: 'JN-0001',
@@ -152,6 +165,7 @@ async function main() {
       industryId: techIndustry!.id,
       location: 'Makati City',
       workType: 'HYBRID' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'FLEXIBLE' as const,
       experienceMin: 5,
       experienceMax: null,
@@ -186,6 +200,7 @@ async function main() {
       industryId: designIndustry!.id,
       location: 'BGC, Taguig',
       workType: 'REMOTE' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'FLEXIBLE' as const,
       experienceMin: 3,
       experienceMax: 7,
@@ -220,6 +235,7 @@ async function main() {
       industryId: marketingIndustry!.id,
       location: 'Cebu City',
       workType: 'ONSITE' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'DAY' as const,
       experienceMin: 2,
       experienceMax: 5,
@@ -255,6 +271,7 @@ async function main() {
       industryId: financeIndustry!.id,
       location: 'Ortigas Center',
       workType: 'HYBRID' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'DAY' as const,
       experienceMin: 1,
       experienceMax: 2,
@@ -1006,6 +1023,7 @@ async function main() {
       industryId: techIndustry!.id,
       location: 'Quezon City',
       workType: 'HYBRID' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'DAY' as const,
       experienceMin: 0,
       experienceMax: 1,
@@ -1040,6 +1058,7 @@ async function main() {
       industryId: marketingIndustry!.id,
       location: 'BGC, Taguig',
       workType: 'ONSITE' as const,
+      jobType: 'INTERNSHIP' as const,
       shiftType: 'DAY' as const,
       experienceMin: 0,
       experienceMax: 0,
@@ -1075,6 +1094,7 @@ async function main() {
       industryId: hrIndustry!.id,
       location: 'Makati City',
       workType: 'ONSITE' as const,
+      jobType: 'FULL_TIME' as const,
       shiftType: 'DAY' as const,
       experienceMin: 1,
       experienceMax: 3,
@@ -1088,21 +1108,49 @@ async function main() {
     },
   ];
 
-  // Seed jobs - skip existing, add new ones
+  // Seed jobs - upsert (create new or update existing with jobType)
   let createdCount = 0;
-  let skippedCount = 0;
+  let updatedCount = 0;
 
   for (const job of jobs) {
     const existingJob = await prisma.job.findUnique({
       where: { jobNumber: job.jobNumber },
     });
 
+    const jobType = job.jobType || 'FULL_TIME';
+
     if (existingJob) {
-      skippedCount++;
+      // Update existing job with jobType using raw SQL
+      await prisma.$executeRaw`
+        UPDATE jobs SET job_type = ${jobType}::"JobType" WHERE job_number = ${job.jobNumber}
+      `;
+      updatedCount++;
     } else {
-      await prisma.job.create({
-        data: job,
+      // Create job without jobType first, then update it
+      const newJob = await prisma.job.create({
+        data: {
+          jobNumber: job.jobNumber,
+          title: job.title,
+          description: job.description,
+          industryId: job.industryId,
+          location: job.location,
+          workType: job.workType,
+          shiftType: job.shiftType,
+          experienceMin: job.experienceMin,
+          experienceMax: job.experienceMax,
+          salaryMin: job.salaryMin,
+          salaryMax: job.salaryMax,
+          salaryCurrency: job.salaryCurrency,
+          salaryPeriod: job.salaryPeriod,
+          isPublished: job.isPublished,
+          publishedAt: job.publishedAt,
+          expiresAt: job.expiresAt,
+        },
       });
+      // Update jobType using raw SQL
+      await prisma.$executeRaw`
+        UPDATE jobs SET job_type = ${jobType}::"JobType" WHERE id = ${newJob.id}::uuid
+      `;
       createdCount++;
     }
   }
@@ -1110,8 +1158,8 @@ async function main() {
   if (createdCount > 0) {
     console.log(`✅ Jobs created: ${createdCount}`);
   }
-  if (skippedCount > 0) {
-    console.log(`ℹ️ Jobs skipped (already exist): ${skippedCount}`);
+  if (updatedCount > 0) {
+    console.log(`✅ Jobs updated with jobType: ${updatedCount}`);
   }
 
   console.log('🎉 Seeding completed!');

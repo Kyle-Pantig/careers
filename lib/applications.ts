@@ -32,6 +32,7 @@ export interface Application {
     jobNumber: string;
     location?: string;
     workType?: string;
+    jobType?: string;
     salaryMin?: number | null;
     salaryMax?: number | null;
     salaryPeriod?: string | null;
@@ -87,7 +88,7 @@ export async function submitApplication(data: ApplicationData): Promise<Applicat
 export async function checkApplicationStatus(
   jobNumber: string,
   options: { email?: string; userId?: string }
-): Promise<{ hasApplied: boolean; application: { status: string; createdAt: string } | null }> {
+): Promise<{ hasApplied: boolean; application: { id: string; status: string; createdAt: string } | null }> {
   const params = new URLSearchParams();
   if (options.email) params.set('email', options.email);
   if (options.userId) params.set('userId', options.userId);

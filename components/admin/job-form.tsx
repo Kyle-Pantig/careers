@@ -35,7 +35,7 @@ import { Loader2, ArrowLeft, Briefcase, MapPin, Building2, Calendar, Check, Chev
 import { toast } from 'sonner';
 import { type Job } from '@/lib/jobs';
 import { useIndustries, useCreateJob, useUpdateJob } from '@/hooks';
-import { jobSchema, type JobFormData, WORK_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS } from '@/shared/validators';
+import { jobSchema, type JobFormData, WORK_TYPE_LABELS, JOB_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS } from '@/shared/validators';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -69,6 +69,7 @@ export function JobForm({ job, mode }: JobFormProps) {
       industryId: job?.industryId || '',
       location: job?.location || '',
       workType: job?.workType || 'ONSITE',
+      jobType: job?.jobType || 'FULL_TIME',
       shiftType: job?.shiftType || 'DAY',
       experienceMin: job?.experienceMin ?? 0,
       experienceMax: job?.experienceMax ?? null,
@@ -82,6 +83,7 @@ export function JobForm({ job, mode }: JobFormProps) {
   });
 
   const watchWorkType = watch('workType');
+  const watchJobType = watch('jobType');
   const watchShiftType = watch('shiftType');
   const watchIndustryId = watch('industryId');
   const watchIsPublished = watch('isPublished');
@@ -232,6 +234,29 @@ export function JobForm({ job, mode }: JobFormProps) {
                     </Select>
                     {errors.workType && (
                       <p className="text-destructive text-sm">{errors.workType.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Job Type *</Label>
+                    <Select
+                      value={watchJobType}
+                      onValueChange={(value) => setValue('jobType', value as JobFormData['jobType'])}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select job type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(JOB_TYPE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.jobType && (
+                      <p className="text-destructive text-sm">{errors.jobType.message}</p>
                     )}
                   </div>
                 </div>
@@ -539,7 +564,7 @@ export function JobForm({ job, mode }: JobFormProps) {
                   dateLabel="Expires At"
                   timeLabel="Time"
                   placeholder="Select expiration date"
-                  value={watch('expiresAt') ? new Date(watch('expiresAt')) : null}
+                  value={watch('expiresAt') ? new Date(watch('expiresAt') as string) : null}
                   onChange={(date) => {
                     setValue('expiresAt', date ? date.toISOString() : '');
                   }}

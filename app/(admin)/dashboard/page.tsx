@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
+import { PERMISSIONS } from '@/shared/validators/permissions';
+import { AccessDenied } from '@/components/admin/access-denied';
 
 export default function DashboardPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading } = useAuth();
 
   useEffect(() => {
     setBreadcrumbs([
@@ -12,6 +15,14 @@ export default function DashboardPage() {
       { label: 'Dashboard' },
     ]);
   }, [setBreadcrumbs]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

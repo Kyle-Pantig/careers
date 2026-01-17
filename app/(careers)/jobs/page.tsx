@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useJobs, useIndustries, useSaveJob, useUnsaveJob, useSavedJobs } from '@/hooks';
+import { useJobs, useIndustries, useSaveJob, useUnsaveJob, useSavedJobs, useUserApplications } from '@/hooks';
 import { useAuth } from '@/context';
 import { useMainJobFilters } from '@/stores';
 import { MaxWidthLayout } from '@/components/careers';
@@ -51,6 +51,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   WORK_TYPE_LABELS,
+  JOB_TYPE_LABELS,
   SHIFT_TYPE_LABELS,
 } from '@/shared/validators';
 import type { Job } from '@/lib/jobs';
@@ -74,6 +75,9 @@ const staggerContainer = {
 export default function JobsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  
+  // Admin/staff cannot save or apply for jobs
+  const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
   
   // Zustand store for filters (persisted in sessionStorage)
   const { 
@@ -115,6 +119,17 @@ export default function JobsPage() {
   const { data: savedJobs = [] } = useSavedJobs();
   const saveJobMutation = useSaveJob();
   const unsaveJobMutation = useUnsaveJob();
+  
+  // User applications - to check if already applied
+  const { data: applicationsData } = useUserApplications(user?.id);
+  
+  // Get applied job IDs for quick lookup (jobId -> applicationId)
+  const appliedJobIds = useMemo(() => {
+    if (!applicationsData?.applications) return new Map<string, string>();
+    return new Map(
+      applicationsData.applications.map((app) => [app.jobId, app.id])
+    );
+  }, [applicationsData]);
   
   // Get saved job IDs for quick lookup
   const savedJobIds = useMemo(() => {
@@ -544,21 +559,24 @@ export default function JobsPage() {
                               {job.jobNumber}
                             </p>
                           </div>
-                          <Button
-                            variant={savedJobIds.has(job.id) ? "default" : "outline"}
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0 rounded-full"
-                            onClick={() => handleSaveJob(job.id, job.jobNumber)}
-                            disabled={savingJobId === job.id}
-                          >
-                            {savingJobId === job.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : savedJobIds.has(job.id) ? (
-                              <BookmarkCheck className="h-4 w-4" />
-                            ) : (
-                              <Bookmark className="h-4 w-4" />
-                            )}
-                          </Button>
+                          {/* Save button - hidden for admin/staff */}
+                          {!isAdminOrStaff && (
+                            <Button
+                              variant={savedJobIds.has(job.id) ? "default" : "outline"}
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0 rounded-full"
+                              onClick={() => handleSaveJob(job.id, job.jobNumber)}
+                              disabled={savingJobId === job.id}
+                            >
+                              {savingJobId === job.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : savedJobIds.has(job.id) ? (
+                                <BookmarkCheck className="h-4 w-4" />
+                              ) : (
+                                <Bookmark className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0 space-y-4">
@@ -571,6 +589,9 @@ export default function JobsPage() {
                           <Badge variant="outline" className="gap-1 text-xs">
                             <Briefcase className="h-3 w-3" />
                             {WORK_TYPE_LABELS[job.workType]}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {JOB_TYPE_LABELS[job.jobType]}
                           </Badge>
                           <Badge variant="outline" className="gap-1 text-xs">
                             <Clock className="h-3 w-3" />
@@ -587,21 +608,30 @@ export default function JobsPage() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-2">
-                          <Button variant="outline" size="sm" asChild className="rounded-full">
+                          <Button variant="outline" size="sm" asChild className="flex-1 rounded-full">
                             <Link href={`/jobs/${job.jobNumber}`}>
                               View Details
                             </Link>
                           </Button>
+                          {/* Expired shown for all, Apply/View Application hidden for admin/staff */}
                           {isJobExpired(job.expiresAt) ? (
                             <Button size="sm" variant="destructive" className="flex-1 rounded-full" disabled>
                               Expired
                             </Button>
-                          ) : (
-                            <Button size="sm" className="flex-1 rounded-full" asChild>
-                              <Link href={`/jobs/${job.jobNumber}/apply`}>
-                                Apply
-                              </Link>
-                            </Button>
+                          ) : !isAdminOrStaff && (
+                            appliedJobIds.has(job.id) ? (
+                              <Button size="sm" variant="secondary" className="flex-1 rounded-full" asChild>
+                                <Link href={`/my-applications/${appliedJobIds.get(job.id)}`}>
+                                  View Application
+                                </Link>
+                              </Button>
+                            ) : (
+                              <Button size="sm" className="flex-1 rounded-full" asChild>
+                                <Link href={`/jobs/${job.jobNumber}/apply`}>
+                                  Apply
+                                </Link>
+                              </Button>
+                            )
                           )}
                         </div>
                       </CardContent>

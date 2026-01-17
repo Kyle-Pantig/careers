@@ -6,12 +6,15 @@ import { JobForm } from '@/components/admin';
 import { getJob, type Job } from '@/lib/jobs';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
+import { PERMISSIONS } from '@/shared/validators/permissions';
+import { AccessDenied } from '@/components/admin/access-denied';
 
 export default function EditJobPage() {
   const params = useParams();
   const router = useRouter();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,12 +42,16 @@ export default function EditJobPage() {
     }
   }, [params.id, router, setBreadcrumbs]);
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (!hasPermission(PERMISSIONS.JOBS_EDIT)) {
+    return <AccessDenied />;
   }
 
   if (!job) {

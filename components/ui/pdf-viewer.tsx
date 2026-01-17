@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,11 +21,19 @@ import {
   Maximize2,
 } from 'lucide-react';
 
+// Import react-pdf CSS styles
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Dynamically import react-pdf to avoid SSR issues with DOMMatrix
+const Document = dynamic(
+  () => import('react-pdf').then((mod) => mod.Document),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> }
+);
+const Page = dynamic(
+  () => import('react-pdf').then((mod) => mod.Page),
+  { ssr: false }
+);
 
 interface PDFViewerProps {
   url: string;
@@ -41,7 +49,16 @@ export function PDFViewer({ url, fileName, open, onOpenChange }: PDFViewerProps)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Set up PDF.js worker on client side only
+  useEffect(() => {
+    setIsClient(true);
+    import('react-pdf').then((pdfModule) => {
+      pdfModule.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfModule.pdfjs.version}/build/pdf.worker.min.mjs`;
+    });
+  }, []);
 
   // Measure container width for responsive PDF sizing
   useEffect(() => {
@@ -132,7 +149,11 @@ export function PDFViewer({ url, fileName, open, onOpenChange }: PDFViewerProps)
           ref={containerRef}
           className="flex-1 overflow-auto bg-muted/50 flex items-start justify-center p-4"
         >
-          {error ? (
+          {!isClient ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <p className="text-muted-foreground mb-4">{error}</p>
               <Button variant="outline" asChild>

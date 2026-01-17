@@ -45,15 +45,17 @@ import {
   Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
 import { useAdminIndustries, useCreateIndustry, useUpdateIndustry, useDeleteIndustry } from '@/hooks';
 import type { Industry } from '@/lib/industries';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { industrySchema, type IndustryFormData } from '@/shared/validators';
+import { industrySchema, type IndustryFormData, PERMISSIONS } from '@/shared/validators';
+import { AccessDenied } from '@/components/admin/access-denied';
 
 export default function IndustriesPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingIndustry, setEditingIndustry] = useState<Industry | null>(null);
 
@@ -90,6 +92,14 @@ export default function IndustriesPage() {
       { label: 'Industries' },
     ]);
   }, [setBreadcrumbs]);
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.INDUSTRIES_VIEW)) {
+    return <AccessDenied />;
+  }
 
   const openCreateDialog = () => {
     setEditingIndustry(null);
@@ -149,12 +159,14 @@ export default function IndustriesPage() {
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Industry
-            </Button>
-          </DialogTrigger>
+          {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Industry
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent>
             <form onSubmit={handleSubmit(onSubmit)}>
               <DialogHeader>
@@ -296,10 +308,12 @@ export default function IndustriesPage() {
               <p className="text-muted-foreground mb-4">
                 Get started by creating your first industry.
               </p>
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Industry
-              </Button>
+              {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Industry
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -309,7 +323,9 @@ export default function IndustriesPage() {
                   <TableHead>Description</TableHead>
                   <TableHead>Jobs</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
+                  {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
+                    <TableHead className="w-[70px]"></TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -329,16 +345,18 @@ export default function IndustriesPage() {
                         <Badge variant="secondary">Inactive</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(industry)}
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(industry)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

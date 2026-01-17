@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const workTypeSchema = z.enum(['ONSITE', 'REMOTE', 'HYBRID']);
+export const jobTypeSchema = z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'FREELANCE', 'INTERNSHIP', 'TEMPORARY']);
 export const shiftTypeSchema = z.enum(['DAY', 'NIGHT', 'ROTATING', 'FLEXIBLE']);
 export const currencySchema = z.enum(['USD', 'EUR', 'GBP', 'PHP', 'JPY', 'AUD', 'CAD', 'SGD', 'INR', 'CNY']);
 export const salaryPeriodSchema = z.enum(['HOURLY', 'MONTHLY', 'YEARLY']);
@@ -11,6 +12,7 @@ export const jobSchema = z.object({
   industryId: z.string().min(1, 'Industry is required'),
   location: z.string().min(1, 'Location is required').max(200, 'Location must be less than 200 characters'),
   workType: workTypeSchema,
+  jobType: jobTypeSchema,
   shiftType: shiftTypeSchema,
   experienceMin: z.number().min(0, 'Minimum experience must be 0 or more').max(50, 'Maximum 50 years'),
   experienceMax: z.number().min(0).max(50).optional().nullable(),
@@ -31,6 +33,7 @@ export const industrySchema = z.object({
 export type JobFormData = z.infer<typeof jobSchema>;
 export type IndustryFormData = z.infer<typeof industrySchema>;
 export type WorkType = z.infer<typeof workTypeSchema>;
+export type JobType = z.infer<typeof jobTypeSchema>;
 export type ShiftType = z.infer<typeof shiftTypeSchema>;
 export type Currency = z.infer<typeof currencySchema>;
 export type SalaryPeriod = z.infer<typeof salaryPeriodSchema>;
@@ -40,6 +43,16 @@ export const WORK_TYPE_LABELS: Record<WorkType, string> = {
   ONSITE: 'On-site',
   REMOTE: 'Remote',
   HYBRID: 'Hybrid',
+};
+
+// Job type labels
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  CONTRACT: 'Contract',
+  FREELANCE: 'Freelance',
+  INTERNSHIP: 'Internship',
+  TEMPORARY: 'Temporary',
 };
 
 // Shift type labels

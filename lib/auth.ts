@@ -12,6 +12,8 @@ export interface User {
   resumeFileName?: string | null;
   resumeUploadedAt?: string | null;
   roles: string[];
+  // Simplified permission level: 'canEdit' (full access) or 'canRead' (view only)
+  permissionLevel?: string | null;
 }
 
 export interface AuthResponse {

@@ -97,6 +97,9 @@ export default function ProfilePage() {
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Admin/staff don't need contact number, address, or resume
+  const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
+
   const {
     register,
     handleSubmit,
@@ -397,186 +400,192 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                {/* Contact Number */}
-                <div className="space-y-2">
-                  <Label htmlFor="contactNumber">Contact Number</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="contactNumber"
-                      placeholder="+63 912 345 6789"
-                      className="pl-10"
-                      autoComplete="tel"
-                      {...register('contactNumber')}
-                    />
-                  </div>
-                  {errors.contactNumber && (
-                    <p className="text-sm text-destructive">{errors.contactNumber.message}</p>
-                  )}
-                </div>
-
-                {/* Address */}
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="address"
-                      placeholder="Enter your address"
-                      className="pl-10"
-                      autoComplete="street-address"
-                      {...register('address')}
-                    />
-                  </div>
-                  {errors.address && (
-                    <p className="text-sm text-destructive">{errors.address.message}</p>
-                  )}
-                </div>
-
-                {/* Resume Section */}
-                <div className="space-y-3">
-                  <Label>Resume</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Upload your resume to auto-fill your details when applying for jobs. PDF only, max 5MB.
-                  </p>
-
-                  {/* File Input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="resume-upload"
-                  />
-                  
-                  {/* Current Resume (if exists and no new file selected) */}
-                  {user.resumeUrl && !selectedFile && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{user.resumeFileName || 'Resume.pdf'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Uploaded {user.resumeUploadedAt 
-                              ? new Date(user.resumeUploadedAt).toLocaleDateString('en-US', { 
-                                  year: 'numeric', 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })
-                              : 'N/A'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={isDeletingResume}
-                          >
-                            {isDeletingResume ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <MoreVertical className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setShowPdfViewer(true)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Replace
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={handleResumeDelete}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {/* Contact Number - Hidden for admin/staff */}
+                {!isAdminOrStaff && (
+                  <div className="space-y-2">
+                    <Label htmlFor="contactNumber">Contact Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="contactNumber"
+                        placeholder="+63 912 345 6789"
+                        className="pl-10"
+                        autoComplete="tel"
+                        {...register('contactNumber')}
+                      />
                     </div>
-                  )}
+                    {errors.contactNumber && (
+                      <p className="text-sm text-destructive">{errors.contactNumber.message}</p>
+                    )}
+                  </div>
+                )}
 
-                  {/* Selected File Preview (pending upload) */}
-                  {selectedFile && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg bg-amber-50 border-amber-200">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-amber-600" />
+                {/* Address - Hidden for admin/staff */}
+                {!isAdminOrStaff && (
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="address"
+                        placeholder="Enter your address"
+                        className="pl-10"
+                        autoComplete="street-address"
+                        {...register('address')}
+                      />
+                    </div>
+                    {errors.address && (
+                      <p className="text-sm text-destructive">{errors.address.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Resume Section - Hidden for admin/staff */}
+                {!isAdminOrStaff && (
+                  <div className="space-y-3">
+                    <Label>Resume</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload your resume to auto-fill your details when applying for jobs. PDF only, max 5MB.
+                    </p>
+
+                    {/* File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="resume-upload"
+                    />
+                    
+                    {/* Current Resume (if exists and no new file selected) */}
+                    {user.resumeUrl && !selectedFile && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{user.resumeFileName || 'Resume.pdf'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Uploaded {user.resumeUploadedAt 
+                                ? new Date(user.resumeUploadedAt).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  })
+                                : 'N/A'
+                              }
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-sm">{selectedFile.name}</p>
-                          <p className="text-xs text-amber-600">
-                            {user.resumeUrl ? 'Will replace current resume' : 'Ready to upload'} • Click &quot;Save Changes&quot; to confirm
-                          </p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              disabled={isDeletingResume}
+                            >
+                              {isDeletingResume ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreVertical className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setShowPdfViewer(true)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Replace
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={handleResumeDelete}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+
+                    {/* Selected File Preview (pending upload) */}
+                    {selectedFile && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-amber-50 border-amber-200">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{selectedFile.name}</p>
+                            <p className="text-xs text-amber-600">
+                              {user.resumeUrl ? 'Will replace current resume' : 'Ready to upload'} • Click &quot;Save Changes&quot; to confirm
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={handleClearSelectedFile}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Drag & Drop Zone (only when no resume uploaded and no file selected) */}
+                    {!user.resumeUrl && !selectedFile && (
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`
+                          border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+                          ${isDragging 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
+                          }
+                        `}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <div>
+                            <p className="font-medium text-sm">
+                              {isDragging ? 'Drop your resume here' : 'Drag & drop or click to select'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              PDF only, max 5MB
+                            </p>
+                          </div>
                         </div>
                       </div>
+                    )}
+
+                    {/* Change Selected File Button (when file is selected) */}
+                    {selectedFile && (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                        onClick={handleClearSelectedFile}
+                        className="rounded-full"
+                        onClick={() => fileInputRef.current?.click()}
                       >
-                        <X className="h-4 w-4" />
+                        <Upload className="h-4 w-4 mr-2" />
+                        Change Selected File
                       </Button>
-                    </div>
-                  )}
-                  
-                  {/* Drag & Drop Zone (only when no resume uploaded and no file selected) */}
-                  {!user.resumeUrl && !selectedFile && (
-                    <div
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`
-                        border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-                        ${isDragging 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
-                        }
-                      `}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <Upload className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-                        <div>
-                          <p className="font-medium text-sm">
-                            {isDragging ? 'Drop your resume here' : 'Drag & drop or click to select'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            PDF only, max 5MB
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Change Selected File Button (when file is selected) */}
-                  {selectedFile && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Change Selected File
-                    </Button>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 <Separator />
 
@@ -744,8 +753,8 @@ export default function ProfilePage() {
         </motion.div>
       </motion.div>
 
-      {/* PDF Viewer for Resume */}
-      {user.resumeUrl && (
+      {/* PDF Viewer for Resume - Only for non-admin/staff */}
+      {!isAdminOrStaff && user.resumeUrl && (
         <PDFViewer
           url={user.resumeUrl}
           fileName={user.resumeFileName || 'Resume.pdf'}

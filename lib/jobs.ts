@@ -3,6 +3,7 @@ import type { Industry } from './industries';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export type WorkType = 'ONSITE' | 'REMOTE' | 'HYBRID';
+export type JobType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'FREELANCE' | 'INTERNSHIP' | 'TEMPORARY';
 export type ShiftType = 'DAY' | 'NIGHT' | 'ROTATING' | 'FLEXIBLE';
 export type SalaryPeriod = 'HOURLY' | 'MONTHLY' | 'YEARLY';
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'PHP' | 'JPY' | 'AUD' | 'CAD' | 'SGD' | 'INR' | 'CNY';
@@ -16,6 +17,7 @@ export interface Job {
   industry: Industry;
   location: string;
   workType: WorkType;
+  jobType: JobType;
   shiftType: ShiftType;
   experienceMin: number;
   experienceMax: number | null;
@@ -40,6 +42,7 @@ export interface CreateJobData {
   industryId: string;
   location: string;
   workType: WorkType;
+  jobType: JobType;
   shiftType: ShiftType;
   experienceMin: number;
   experienceMax?: number | null;

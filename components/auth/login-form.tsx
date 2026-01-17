@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<'form'>) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic-link'>('password');
@@ -68,8 +69,13 @@ export function LoginForm({
       
       toast.success('Welcome back!');
       
-      // Redirect based on role
-      if (result.user.roles.includes('admin') || result.user.roles.includes('staff')) {
+      // Get redirect URL at submission time (not render time)
+      const redirectUrl = searchParams.get('redirect');
+      
+      // Redirect to the specified URL or default based on role
+      if (redirectUrl) {
+        router.push(redirectUrl);
+      } else if (result.user.roles.includes('admin') || result.user.roles.includes('staff')) {
         router.push('/dashboard');
       } else {
         router.push('/');
@@ -91,7 +97,7 @@ export function LoginForm({
       if (result.cooldown) {
         setCooldown(result.cooldown);
       }
-      toast.success('Check your inbox for the sign-in link.');
+      toast.success('Check your inbox for the login link.');
     } catch (err) {
       if (err instanceof CooldownError) {
         setCooldown(err.cooldown);
@@ -118,7 +124,7 @@ export function LoginForm({
       if (result.cooldown) {
         setCooldown(result.cooldown);
       }
-      toast.success('A new sign-in link has been sent to your inbox.');
+      toast.success('A new login link has been sent to your inbox.');
     } catch (err) {
       if (err instanceof CooldownError) {
         setCooldown(err.cooldown);
@@ -175,7 +181,7 @@ export function LoginForm({
                 setLoginMethod('password');
               }}
             >
-              Sign in with password instead
+              Log in with password instead
             </button>
           </FieldDescription>
         </div>
@@ -190,8 +196,8 @@ export function LoginForm({
           <h1 className="text-2xl font-bold">Login to your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
             {loginMethod === 'password' 
-              ? 'Enter your credentials to login'
-              : 'Enter your email to receive a sign-in link'
+              ? 'Enter your credentials to log in'
+              : 'Enter your email to receive a login link'
             }
           </p>
         </div>
@@ -281,7 +287,7 @@ export function LoginForm({
 
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign in
+                Log in
               </Button>
             </div>
           </form>
@@ -308,12 +314,12 @@ export function LoginForm({
                 ) : cooldown > 0 ? (
                   `Wait ${cooldown}s`
                 ) : (
-                  'Send sign-in link'
+                  'Send login link'
                 )}
               </Button>
               
               <p className="text-center text-xs text-muted-foreground">
-                We&apos;ll send you a secure link to sign in without a password.
+                We&apos;ll send you a secure link to log in without a password.
               </p>
             </div>
           </form>

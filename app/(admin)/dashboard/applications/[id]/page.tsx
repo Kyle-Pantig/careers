@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useBreadcrumbs } from '@/context';
+import { useBreadcrumbs, useAuth } from '@/context';
 import { getApplication, updateApplicationStatus, type Application } from '@/lib/applications';
+import { PERMISSIONS } from '@/shared/validators/permissions';
+import { AccessDenied } from '@/components/admin/access-denied';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -52,6 +54,7 @@ export default function ApplicationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const { hasPermission, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const applicationId = params.id as string;
 
@@ -97,6 +100,14 @@ export default function ApplicationDetailPage() {
       router.push('/dashboard/applications');
     }
   }, [isError, router]);
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+  }
+
+  if (!hasPermission(PERMISSIONS.APPLICATIONS_VIEW)) {
+    return <AccessDenied />;
+  }
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -276,46 +287,48 @@ export default function ApplicationDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Update Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Update Status</CardTitle>
-              <CardDescription>Change the application status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="reviewed">Reviewed</SelectItem>
-                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="hired">Hired</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes about this application..."
-                  rows={4}
-                />
-              </div>
-              <Button
-                onClick={() => updateMutation.mutate()}
-                disabled={updateMutation.isPending}
-                className="w-full"
-              >
-                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Update Status - Only for users with edit permission */}
+          {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Update Status</CardTitle>
+                <CardDescription>Change the application status</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                      <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="hired">Hired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add notes about this application..."
+                    rows={4}
+                  />
+                </div>
+                <Button
+                  onClick={() => updateMutation.mutate()}
+                  disabled={updateMutation.isPending}
+                  className="w-full"
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Actions */}
           <Card>
@@ -323,14 +336,16 @@ export default function ApplicationDetailPage() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setEmailDialogOpen(true)}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Send Email
-              </Button>
+              {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setEmailDialogOpen(true)}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Email
+                </Button>
+              )}
               <Button variant="outline" className="w-full justify-start" asChild>
                 <a href={`tel:${application.contactNumber}`}>
                   <Phone className="mr-2 h-4 w-4" />

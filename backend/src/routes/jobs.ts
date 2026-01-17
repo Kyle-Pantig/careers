@@ -1,6 +1,8 @@
 import { Elysia, t } from 'elysia';
 import { createHash } from 'crypto';
 import { prisma } from '../lib/prisma';
+import { authMiddleware } from '../middleware/auth';
+import { PERMISSIONS } from '../../../shared/validators/permissions';
 
 // Hash IP address for privacy
 function hashIpAddress(ip: string): string {
@@ -29,6 +31,7 @@ async function generateJobNumber(): Promise<string> {
 }
 
 export const jobRoutes = new Elysia({ prefix: '/jobs' })
+  .use(authMiddleware)
   // Get all jobs (admin/staff - includes unpublished)
   .get(
     '/admin',
@@ -87,6 +90,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       };
     },
     {
+      hasPermission: PERMISSIONS.JOBS_VIEW,
       query: t.Object({
         page: t.Optional(t.String()),
         limit: t.Optional(t.String()),
@@ -339,25 +343,28 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       // Generate job number
       const jobNumber = await generateJobNumber();
 
+      const createData = {
+        jobNumber,
+        title: body.title,
+        description: body.description,
+        industryId: body.industryId,
+        location: body.location,
+        workType: body.workType,
+        jobType: body.jobType || 'FULL_TIME',
+        shiftType: body.shiftType || 'DAY',
+        experienceMin: body.experienceMin || 0,
+        experienceMax: body.experienceMax ?? null,
+        salaryMin: body.salaryMin ?? null,
+        salaryMax: body.salaryMax ?? null,
+        salaryCurrency: body.salaryCurrency || 'USD',
+        salaryPeriod: body.salaryPeriod || 'YEARLY',
+        isPublished: body.isPublished || false,
+        publishedAt: body.isPublished ? new Date() : null,
+        expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+      };
+
       const job = await prisma.job.create({
-        data: {
-          jobNumber,
-          title: body.title,
-          description: body.description,
-          industryId: body.industryId,
-          location: body.location,
-          workType: body.workType,
-          shiftType: body.shiftType || 'DAY',
-          experienceMin: body.experienceMin || 0,
-          experienceMax: body.experienceMax ?? null,
-          salaryMin: body.salaryMin ?? null,
-          salaryMax: body.salaryMax ?? null,
-          salaryCurrency: body.salaryCurrency || 'USD',
-          salaryPeriod: body.salaryPeriod || 'YEARLY',
-          isPublished: body.isPublished || false,
-          publishedAt: body.isPublished ? new Date() : null,
-          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
-        },
+        data: createData,
         include: {
           industry: true,
         },
@@ -366,6 +373,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       return { job, message: 'Job created successfully' };
     },
     {
+      hasPermission: PERMISSIONS.JOBS_CREATE,
       body: t.Object({
         title: t.String({ minLength: 1 }),
         description: t.String({ minLength: 1 }),
@@ -376,6 +384,14 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
           t.Literal('REMOTE'),
           t.Literal('HYBRID'),
         ]),
+        jobType: t.Optional(t.Union([
+          t.Literal('FULL_TIME'),
+          t.Literal('PART_TIME'),
+          t.Literal('CONTRACT'),
+          t.Literal('FREELANCE'),
+          t.Literal('INTERNSHIP'),
+          t.Literal('TEMPORARY'),
+        ])),
         shiftType: t.Optional(t.Union([
           t.Literal('DAY'),
           t.Literal('NIGHT'),
@@ -440,25 +456,28 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
         publishedAt = null;
       }
 
+      const updateData = {
+        title: body.title,
+        description: body.description,
+        industryId: body.industryId,
+        location: body.location,
+        workType: body.workType,
+        jobType: body.jobType,
+        shiftType: body.shiftType,
+        experienceMin: body.experienceMin,
+        experienceMax: body.experienceMax ?? null,
+        salaryMin: body.salaryMin ?? null,
+        salaryMax: body.salaryMax ?? null,
+        salaryCurrency: body.salaryCurrency,
+        salaryPeriod: body.salaryPeriod,
+        isPublished: body.isPublished,
+        publishedAt,
+        expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+      };
+
       const job = await prisma.job.update({
         where: { id: params.id },
-        data: {
-          title: body.title,
-          description: body.description,
-          industryId: body.industryId,
-          location: body.location,
-          workType: body.workType,
-          shiftType: body.shiftType,
-          experienceMin: body.experienceMin,
-          experienceMax: body.experienceMax ?? null,
-          salaryMin: body.salaryMin ?? null,
-          salaryMax: body.salaryMax ?? null,
-          salaryCurrency: body.salaryCurrency,
-          salaryPeriod: body.salaryPeriod,
-          isPublished: body.isPublished,
-          publishedAt,
-          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
-        },
+        data: updateData,
         include: {
           industry: true,
         },
@@ -467,6 +486,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       return { job, message: 'Job updated successfully' };
     },
     {
+      hasPermission: PERMISSIONS.JOBS_EDIT,
       params: t.Object({
         id: t.String(),
       }),
@@ -480,6 +500,14 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
           t.Literal('REMOTE'),
           t.Literal('HYBRID'),
         ]),
+        jobType: t.Optional(t.Union([
+          t.Literal('FULL_TIME'),
+          t.Literal('PART_TIME'),
+          t.Literal('CONTRACT'),
+          t.Literal('FREELANCE'),
+          t.Literal('INTERNSHIP'),
+          t.Literal('TEMPORARY'),
+        ])),
         shiftType: t.Optional(t.Union([
           t.Literal('DAY'),
           t.Literal('NIGHT'),
@@ -533,6 +561,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       return { message: 'Job deleted successfully' };
     },
     {
+      hasPermission: PERMISSIONS.JOBS_DELETE,
       params: t.Object({
         id: t.String(),
       }),
@@ -567,6 +596,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       return { job, message: isPublished ? 'Job published successfully' : 'Job unpublished successfully' };
     },
     {
+      hasPermission: PERMISSIONS.JOBS_PUBLISH,
       params: t.Object({
         id: t.String(),
       }),

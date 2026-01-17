@@ -583,13 +583,30 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
-        roles: { include: { role: true } },
+        roles: {
+          include: { role: true },
+        },
       },
     }) as any;
 
     if (!user) {
       set.status = 404;
       return { error: 'User not found' };
+    }
+
+    // Get permission level for staff users
+    const isAdmin = user.roles.some((ur: { role: { name: string } }) => ur.role.name === 'admin');
+    const staffRole = user.roles.find((ur: { role: { name: string } }) => ur.role.name === 'staff');
+    
+    // Determine permission level:
+    // - Admin: 'canEdit' (full access)
+    // - Staff: their assigned permissionLevel ('canEdit' or 'canRead')
+    // - User: null (no admin permissions)
+    let permissionLevel: string | null = null;
+    if (isAdmin) {
+      permissionLevel = 'canEdit';
+    } else if (staffRole) {
+      permissionLevel = staffRole.permissionLevel || 'canRead';
     }
 
     return {
@@ -605,6 +622,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         resumeFileName: user.resumeFileName,
         resumeUploadedAt: user.resumeUploadedAt,
         roles: user.roles.map((ur: { role: { name: string } }) => ur.role.name),
+        permissionLevel,
       },
     };
   })

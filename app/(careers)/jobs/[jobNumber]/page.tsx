@@ -51,6 +51,7 @@ import {
 import { toast } from 'sonner';
 import {
   WORK_TYPE_LABELS,
+  JOB_TYPE_LABELS,
   SHIFT_TYPE_LABELS,
   CURRENCY_SYMBOLS,
   SALARY_PERIOD_LABELS,
@@ -64,7 +65,10 @@ export default function JobDetailPage() {
   const { user } = useAuth();
   const viewTracked = useRef(false);
   const [hasApplied, setHasApplied] = useState(false);
-  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+
+  // Admin/staff cannot save or apply for jobs
+  const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
 
   const jobNumber = params.jobNumber as string;
 
@@ -123,7 +127,7 @@ export default function JobDetailPage() {
       checkApplicationStatus(jobNumber, { userId: user.id })
         .then((result) => {
           setHasApplied(result.hasApplied);
-          setApplicationStatus(result.application?.status || null);
+          setApplicationId(result.application?.id || null);
         })
         .catch(() => {
           // Silently fail
@@ -260,6 +264,9 @@ export default function JobDetailPage() {
                 <Briefcase className="h-4 w-4" />
                 {WORK_TYPE_LABELS[job.workType]}
               </span>
+              <Badge variant="outline">
+                {JOB_TYPE_LABELS[job.jobType]}
+              </Badge>
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 {SHIFT_TYPE_LABELS[job.shiftType]}
@@ -274,21 +281,24 @@ export default function JobDetailPage() {
             <Button variant="outline" size="icon" className="rounded-full" onClick={handleShare}>
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button 
-              variant={isSaved ? "default" : "outline"} 
-              size="icon" 
-              className="rounded-full" 
-              onClick={handleToggleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isSaved ? (
-                <BookmarkCheck className="h-4 w-4" />
-              ) : (
-                <Bookmark className="h-4 w-4" />
-              )}
-            </Button>
+            {/* Save button - hidden for admin/staff */}
+            {!isAdminOrStaff && (
+              <Button 
+                variant={isSaved ? "default" : "outline"} 
+                size="icon" 
+                className="rounded-full" 
+                onClick={handleToggleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isSaved ? (
+                  <BookmarkCheck className="h-4 w-4" />
+                ) : (
+                  <Bookmark className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </motion.div>
         </div>
       </motion.div>
@@ -386,6 +396,14 @@ export default function JobDetailPage() {
               </div>
               <Separator />
               <div className="flex items-start gap-3">
+                <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Job Type</p>
+                  <p className="text-sm text-muted-foreground">{JOB_TYPE_LABELS[job.jobType]}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="flex items-start gap-3">
                 <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">Shift</p>
@@ -441,44 +459,49 @@ export default function JobDetailPage() {
       </div>
 
       {/* Apply Button - Bottom */}
-      <motion.div 
-        id="apply" 
-        className="mt-8 lg:max-w-xs lg:mx-auto"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
-        {isJobExpired ? (
-          <Button 
-            variant="destructive"
-            className="w-full rounded-full" 
-            size="lg"
-            disabled
-          >
-            Expired
-          </Button>
-        ) : hasApplied ? (
-          <div className="text-center p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 mb-1">
-              <CheckCircle2 className="h-5 w-5" />
-              <span className="font-medium">Application Submitted</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Status: <span className="capitalize">{applicationStatus}</span>
-            </p>
-          </div>
-        ) : (
-          <Button 
-            className="w-full rounded-full" 
-            size="lg"
-            asChild
-          >
-            <Link href={`/jobs/${jobNumber}/apply`}>
-              Apply Now
-            </Link>
-          </Button>
-        )}
-      </motion.div>
+      {/* Admin/staff can see Expired status but cannot Apply */}
+      {(isJobExpired || !isAdminOrStaff) && (
+        <motion.div 
+          id="apply" 
+          className="mt-8 lg:max-w-xs lg:mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          {isJobExpired ? (
+            <Button 
+              variant="destructive"
+              className="w-full rounded-full" 
+              size="lg"
+              disabled
+            >
+              Expired
+            </Button>
+          ) : hasApplied && applicationId ? (
+            <Button 
+              variant="secondary"
+              className="w-full rounded-full" 
+              size="lg"
+              asChild
+            >
+              <Link href={`/my-applications/${applicationId}`}>
+                <CheckCircle2 className="h-5 w-5 mr-2" />
+                View Application
+              </Link>
+            </Button>
+          ) : (
+            <Button 
+              className="w-full rounded-full" 
+              size="lg"
+              asChild
+            >
+              <Link href={`/jobs/${jobNumber}/apply`}>
+                Apply Now
+              </Link>
+            </Button>
+          )}
+        </motion.div>
+      )}
     </MaxWidthLayout>
   );
 }

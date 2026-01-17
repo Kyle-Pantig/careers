@@ -64,7 +64,9 @@ model UserRole {
   userId String @db.Uuid
   roleId String @db.Uuid
 
-  permissions Json @default("{}")
+  // Simplified permission level: "canEdit" (full access) or "canRead" (view only)
+  // null means no special permissions (regular user or admin who has full access by default)
+  permissionLevel String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -95,6 +97,15 @@ enum WorkType {
   ONSITE
   REMOTE
   HYBRID
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  FREELANCE
+  INTERNSHIP
+  TEMPORARY
 }
 
 enum ShiftType {
@@ -145,6 +156,7 @@ model Job {
   industryId        String       @db.Uuid
   location          String
   workType          WorkType
+  jobType           JobType      @default(FULL_TIME)  // Full-time, Part-time, Contract, etc.
   shiftType         ShiftType    @default(DAY)
   experienceMin     Int          @default(0)  // Minimum years of experience
   experienceMax     Int?                      // Maximum years (null = no max, e.g., "5+ years")
