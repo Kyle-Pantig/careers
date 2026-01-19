@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context';
 import { useJobByNumber } from '@/hooks';
 import { submitApplication, checkApplicationStatus } from '@/lib/applications';
@@ -44,6 +45,7 @@ type ApplicationFormData = z.infer<typeof applicationSchema>;
 export default function JobApplyPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const jobNumber = params.jobNumber as string;
 
@@ -223,6 +225,11 @@ export default function JobApplyPage() {
       setApplicationId(result.application.id);
       setIsSuccess(true);
       toast.success('Application submitted successfully!');
+      
+      // Invalidate user applications cache so job cards show "View Application" button
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['applications', 'user', user.id] });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to submit application');
     } finally {

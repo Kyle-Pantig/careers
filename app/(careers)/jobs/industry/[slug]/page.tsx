@@ -334,9 +334,9 @@ export default function IndustryJobsPage() {
                   className="w-full sm:w-[220px] justify-between font-normal bg-transparent"
                 >
                   <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <MapPin className="h-4 w-4 mr-2 " />
                     {!selectedLocation ? (
-                      <span className="text-muted-foreground">All Locations</span>
+                      <span>All Locations</span>
                     ) : (
                       <span className="truncate">{selectedLocation}</span>
                     )}
