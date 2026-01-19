@@ -1122,7 +1122,7 @@ async function main() {
     if (existingJob) {
       // Update existing job with jobType using raw SQL
       await prisma.$executeRaw`
-        UPDATE jobs SET job_type = ${jobType}::"JobType" WHERE job_number = ${job.jobNumber}
+        UPDATE jobs SET "jobType" = ${jobType}::"JobType" WHERE "jobNumber" = ${job.jobNumber}
       `;
       updatedCount++;
     } else {
@@ -1149,7 +1149,7 @@ async function main() {
       });
       // Update jobType using raw SQL
       await prisma.$executeRaw`
-        UPDATE jobs SET job_type = ${jobType}::"JobType" WHERE id = ${newJob.id}::uuid
+        UPDATE jobs SET "jobType" = ${jobType}::"JobType" WHERE id = ${newJob.id}::uuid
       `;
       createdCount++;
     }
@@ -1160,6 +1160,391 @@ async function main() {
   }
   if (updatedCount > 0) {
     console.log(`✅ Jobs updated with jobType: ${updatedCount}`);
+  }
+
+  // Seed email templates for application-related emails
+  const emailTemplates = [
+    {
+      type: 'APPLICATION_CONFIRMATION',
+      name: 'Application Confirmation',
+      subject: 'Application Received - {{jobTitle}}',
+      body: `<div style="text-align: center; margin-bottom: 32px;">
+  <div style="display: inline-block; background-color: #dcfce7; border-radius: 50%; padding: 16px; margin-bottom: 16px;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  </div>
+  <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
+    Application Received!
+  </h1>
+  <p style="margin: 0; font-size: 15px; color: #52525b;">
+    Thank you for applying, {{applicantName}}
+  </p>
+</div>
+
+<div style="background-color: #fafafa; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+  <p style="margin: 0 0 4px 0; font-size: 13px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">
+    Position Applied For
+  </p>
+  <h2 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #18181b;">
+    {{jobTitle}}
+  </h2>
+  <p style="margin: 0; font-size: 14px; color: #52525b;">
+    {{companyLocation}} • {{jobNumber}}
+  </p>
+</div>
+
+<div style="margin-bottom: 32px;">
+  <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #18181b;">
+    What happens next?
+  </h3>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+    <tr>
+      <td style="padding-bottom: 12px;">
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="width: 28px; vertical-align: top;">
+              <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">1</div>
+            </td>
+            <td style="padding-left: 12px;">
+              <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Application Review</p>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">Our team will carefully review your application and resume.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding-bottom: 12px;">
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="width: 28px; vertical-align: top;">
+              <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">2</div>
+            </td>
+            <td style="padding-left: 12px;">
+              <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Initial Screening</p>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">If your profile matches our requirements, we'll reach out for a screening call.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="width: 28px; vertical-align: top;">
+              <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">3</div>
+            </td>
+            <td style="padding-left: 12px;">
+              <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Interview Process</p>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">Selected candidates will be invited to participate in interviews.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+  <tr>
+    <td align="center">
+      <a href="{{jobUrl}}" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 14px; font-weight: 500; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
+        View Job Details
+      </a>
+    </td>
+  </tr>
+</table>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    We appreciate your interest in joining our team. We'll be in touch soon with updates on your application status.
+  </p>
+</div>`,
+    },
+    {
+      type: 'APPLICATION_REVIEWED',
+      name: 'Application Reviewed',
+      subject: 'Application Update - {{jobTitle}}',
+      body: `<h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+  Application Update
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+  Dear {{applicantName}},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+  Position: <strong style="color: #18181b;">{{jobTitle}}</strong> ({{jobNumber}})
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  Thank you for your patience. We wanted to let you know that your application has been reviewed by our hiring team.
+</p>
+
+<div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+  <p style="margin: 0; font-size: 14px; color: #166534; font-weight: 500;">
+    ✓ Your application is now under active consideration
+  </p>
+</div>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  Our team is carefully evaluating all candidates, and we will be in touch with you regarding the next steps in our selection process.
+</p>
+
+<p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We appreciate your interest in joining our team and thank you for your continued patience.
+</p>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    If you have any questions, please don't hesitate to reach out.
+  </p>
+</div>`,
+    },
+    {
+      type: 'APPLICATION_REJECTION',
+      name: 'Application Rejection',
+      subject: 'Thank You for Applying - {{jobTitle}}',
+      body: `<h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+  Thank You for Your Application
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+  Dear {{applicantName}},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+  Position: <strong style="color: #18181b;">{{jobTitle}}</strong> ({{jobNumber}})
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  Thank you for taking the time to apply for the {{jobTitle}} position and for your interest in joining our team. We truly appreciate the effort you put into your application.
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  After careful consideration, we have decided to move forward with candidates whose qualifications more closely align with our current needs for this specific role. This was a difficult decision, as we received many impressive applications.
+</p>
+
+<div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+  <p style="margin: 0 0 8px 0; font-size: 14px; color: #854d0e; font-weight: 500;">
+    Don't be discouraged!
+  </p>
+  <p style="margin: 0; font-size: 13px; color: #854d0e; line-height: 1.5;">
+    This decision does not reflect on your abilities or potential. The job market is highly competitive, and the right opportunity for you is out there.
+  </p>
+</div>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We encourage you to:
+</p>
+
+<ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; color: #18181b; line-height: 1.8;">
+  <li>Keep an eye on our careers page for future opportunities that match your skills</li>
+  <li>Continue developing your expertise in your field</li>
+  <li>Apply again in the future – we'd love to hear from you</li>
+</ul>
+
+<p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We wish you all the best in your career journey and future endeavors. Thank you again for considering us as a potential employer.
+</p>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    Warm regards,<br>
+    The Hiring Team
+  </p>
+</div>`,
+    },
+    {
+      type: 'INTERVIEW_INVITATION',
+      name: 'Interview Invitation',
+      subject: 'Interview Invitation - {{jobTitle}}',
+      body: `<h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+  Interview Invitation
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+  Dear {{applicantName}},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+  Position: <strong style="color: #18181b;">{{jobTitle}}</strong> ({{jobNumber}})
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We are pleased to inform you that your application has been shortlisted, and we would like to invite you to an interview.
+</p>
+
+<div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+  <h3 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #18181b;">
+    Interview Details
+  </h3>
+  <table role="presentation" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+    <tr>
+      <td style="color: #71717a; padding: 4px 16px 4px 0;">Date:</td>
+      <td style="color: #18181b; font-weight: 500;">{{interviewDate}}</td>
+    </tr>
+    <tr>
+      <td style="color: #71717a; padding: 4px 16px 4px 0;">Time:</td>
+      <td style="color: #18181b; font-weight: 500;">{{interviewTime}}</td>
+    </tr>
+    <tr>
+      <td style="color: #71717a; padding: 4px 16px 4px 0;">Format:</td>
+      <td style="color: #18181b; font-weight: 500;">{{interviewType}}</td>
+    </tr>
+    <tr>
+      <td style="color: #71717a; padding: 4px 16px 4px 0;">Location:</td>
+      <td style="color: #18181b; font-weight: 500;">{{interviewLocation}}</td>
+    </tr>
+  </table>
+</div>
+
+{{#if additionalNotes}}
+<p style="margin: 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  {{additionalNotes}}
+</p>
+{{/if}}
+
+<p style="margin: 16px 0 0 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  Please confirm your attendance by replying to this email or contacting us.
+</p>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    If you have any questions, please don't hesitate to reach out.
+  </p>
+</div>`,
+    },
+    {
+      type: 'JOB_OFFER',
+      name: 'Job Offer',
+      subject: 'Job Offer - {{jobTitle}}',
+      body: `<h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+  Congratulations! 🎉
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+  Dear {{applicantName}},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+  Position: <strong style="color: #18181b;">{{jobTitle}}</strong> ({{jobNumber}})
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We are pleased to offer you the <strong>{{jobTitle}}</strong> position! Your qualifications and experience impressed us throughout the interview process.
+</p>
+
+<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
+  <p style="margin: 0 0 8px 0; font-size: 13px; color: #166534; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+    Compensation Package
+  </p>
+  <p style="margin: 0; font-size: 24px; color: #15803d; font-weight: 600;">
+    {{salaryDisplay}}
+  </p>
+  <p style="margin: 12px 0 0 0; font-size: 13px; color: #166534;">
+    <strong>Proposed Start Date:</strong> {{startDate}}
+  </p>
+</div>
+
+{{#if additionalNotes}}
+<div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+  <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; font-weight: 500;">
+    Additional Information
+  </p>
+  <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+    {{additionalNotes}}
+  </p>
+</div>
+{{/if}}
+
+<p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We look forward to welcoming you to our team!
+</p>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    If you have any questions, please don't hesitate to reach out.
+  </p>
+</div>`,
+    },
+    {
+      type: 'APPLICATION_FOLLOW_UP',
+      name: 'Application Follow-up',
+      subject: 'Following Up - {{jobTitle}}',
+      body: `<h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+  Application Status Update
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+  Dear {{applicantName}},
+</p>
+
+<p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+  Position: <strong style="color: #18181b;">{{jobTitle}}</strong> ({{jobNumber}})
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We wanted to follow up regarding your application for the {{jobTitle}} position.
+</p>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  Your application is still under review, and we appreciate your patience during our selection process. We have received many applications and are carefully evaluating each candidate.
+</p>
+
+{{#if additionalNotes}}
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  {{additionalNotes}}
+</p>
+{{/if}}
+
+<p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+  We will be in touch with an update as soon as possible.
+</p>
+
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+  <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+    If you have any questions, please don't hesitate to reach out.
+  </p>
+</div>`,
+    },
+  ];
+
+  // Seed email templates using raw SQL to handle enum
+  let templateCreatedCount = 0;
+  let templateUpdatedCount = 0;
+
+  for (const template of emailTemplates) {
+    const existingTemplate = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM email_templates WHERE type = ${template.type}::"EmailTemplateType"
+    `;
+
+    if (existingTemplate.length > 0) {
+      // Update existing template
+      await prisma.$executeRaw`
+        UPDATE email_templates 
+        SET name = ${template.name}, subject = ${template.subject}, body = ${template.body}, "updatedAt" = NOW()
+        WHERE type = ${template.type}::"EmailTemplateType"
+      `;
+      templateUpdatedCount++;
+    } else {
+      // Create new template
+      await prisma.$executeRaw`
+        INSERT INTO email_templates (id, type, name, subject, body, "isActive", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${template.type}::"EmailTemplateType", ${template.name}, ${template.subject}, ${template.body}, true, NOW(), NOW())
+      `;
+      templateCreatedCount++;
+    }
+  }
+
+  if (templateCreatedCount > 0) {
+    console.log(`✅ Email templates created: ${templateCreatedCount}`);
+  }
+  if (templateUpdatedCount > 0) {
+    console.log(`✅ Email templates updated: ${templateUpdatedCount}`);
   }
 
   console.log('🎉 Seeding completed!');

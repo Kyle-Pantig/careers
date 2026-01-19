@@ -62,6 +62,7 @@ export interface UserFilters {
   limit?: number;
   search?: string;
   role?: string;
+  userType?: 'candidates' | 'staff';
 }
 
 // Get all users (admin)
@@ -72,6 +73,7 @@ export async function getAdminUsers(filters: UserFilters = {}): Promise<UsersRes
   if (filters.limit) params.set('limit', filters.limit.toString());
   if (filters.search) params.set('search', filters.search);
   if (filters.role) params.set('role', filters.role);
+  if (filters.userType) params.set('userType', filters.userType);
 
   const res = await fetch(`${API_URL}/users/admin?${params}`, {
     credentials: 'include',
@@ -196,6 +198,139 @@ export async function updateUserPermissionLevel(
 
   if (!res.ok) {
     throw new Error(result.error || 'Failed to update user permission level');
+  }
+
+  return result;
+}
+
+// ============================================
+// User Invitation Functions
+// ============================================
+
+export interface InviteUserData {
+  email: string;
+  role: 'admin' | 'staff';
+  permissionLevel?: string;
+}
+
+export interface InviteUserResponse {
+  success: boolean;
+  message: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+  };
+}
+
+// Invite a new user (admin only)
+export async function inviteUser(data: InviteUserData): Promise<InviteUserResponse> {
+  const res = await fetch(`${API_URL}/auth/invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to invite user');
+  }
+
+  return result;
+}
+
+// Verify invitation token
+export interface VerifyInvitationResponse {
+  valid: boolean;
+  email?: string;
+  role?: string;
+  error?: string;
+}
+
+export async function verifyInvitation(token: string): Promise<VerifyInvitationResponse> {
+  const res = await fetch(`${API_URL}/auth/invitation/verify?token=${encodeURIComponent(token)}`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  // Don't throw error for invalid tokens, return the response
+  return result;
+}
+
+// Accept invitation and set up account
+export interface AcceptInvitationData {
+  token: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+}
+
+export interface AcceptInvitationResponse {
+  success: boolean;
+  message: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    emailVerified: boolean;
+    roles: string[];
+  };
+}
+
+export async function acceptInvitation(data: AcceptInvitationData): Promise<AcceptInvitationResponse> {
+  const res = await fetch(`${API_URL}/auth/invitation/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to accept invitation');
+  }
+
+  return result;
+}
+
+// Resend invitation (admin only)
+export async function resendInvitation(userId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/auth/invitation/resend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ userId }),
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to resend invitation');
+  }
+
+  return result;
+}
+
+// ============================================
+// User Delete Functions
+// ============================================
+
+// Delete a user (admin only, super admin required for deleting other admins)
+export async function deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to delete user');
   }
 
   return result;

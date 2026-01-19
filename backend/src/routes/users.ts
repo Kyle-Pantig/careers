@@ -15,7 +15,7 @@ export const userRoutes = new Elysia({ prefix: '/users' })
   .get(
     '/admin',
     async ({ query }) => {
-      const { page = '1', limit = '10', search, role } = query;
+      const { page = '1', limit = '10', search, role, userType } = query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
       const where: Record<string, unknown> = {};
@@ -28,7 +28,25 @@ export const userRoutes = new Elysia({ prefix: '/users' })
         ];
       }
 
-      if (role) {
+      // Filter by userType (candidates = user role, staff = admin/staff roles)
+      if (userType === 'candidates') {
+        where.roles = {
+          some: {
+            role: {
+              name: 'user',
+            },
+          },
+        };
+      } else if (userType === 'staff') {
+        where.roles = {
+          some: {
+            role: {
+              name: { in: ['admin', 'staff'] },
+            },
+          },
+        };
+      } else if (role) {
+        // Fallback to single role filter if no userType specified
         where.roles = {
           some: {
             role: {
@@ -93,6 +111,7 @@ export const userRoutes = new Elysia({ prefix: '/users' })
         limit: t.Optional(t.String()),
         search: t.Optional(t.String()),
         role: t.Optional(t.String()),
+        userType: t.Optional(t.String()),
       }),
     }
   )
@@ -471,6 +490,92 @@ export const userRoutes = new Elysia({ prefix: '/users' })
       }),
       body: t.Object({
         permissionLevel: t.Union([t.String(), t.Null()]),
+      }),
+    }
+  )
+
+  // Delete user - ADMIN ONLY (Super admin required to delete other admins)
+  .delete(
+    '/:id',
+    async ({ params, set, user: currentUser }) => {
+      if (!currentUser) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      // Only admin can delete users
+      const isCurrentUserAdmin = currentUser.roles.includes('admin');
+      if (!isCurrentUserAdmin) {
+        set.status = 403;
+        return { error: 'Only administrators can delete users' };
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: params.id },
+        include: {
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+
+      if (!targetUser) {
+        set.status = 404;
+        return { error: 'User not found' };
+      }
+
+      const isSelf = currentUser.userId === params.id;
+      const isTargetUserAdmin = targetUser.roles.some((ur) => ur.role.name === 'admin');
+      const isSuperAdmin = currentUser.email === process.env.ADMIN_EMAIL;
+
+      // Admin cannot delete themselves
+      if (isSelf) {
+        set.status = 403;
+        return { error: 'You cannot delete your own account' };
+      }
+
+      // Cannot delete the super admin (primary admin)
+      if (targetUser.email === process.env.ADMIN_EMAIL) {
+        set.status = 403;
+        return { error: 'Cannot delete the super admin account' };
+      }
+
+      // Only super admin can delete other admin users
+      if (isTargetUserAdmin && !isSuperAdmin) {
+        set.status = 403;
+        return { error: 'Only the super admin can delete other admin users' };
+      }
+
+      // Delete related records in a transaction
+      await prisma.$transaction([
+        // Delete user's roles
+        prisma.userRole.deleteMany({
+          where: { userId: params.id },
+        }),
+        // Delete user's accounts (OAuth, credentials)
+        prisma.account.deleteMany({
+          where: { userId: params.id },
+        }),
+        // Delete user's email tokens
+        prisma.emailToken.deleteMany({
+          where: { email: targetUser.email },
+        }),
+        // Delete the user
+        prisma.user.delete({
+          where: { id: params.id },
+        }),
+      ]);
+
+      return {
+        success: true,
+        message: `User ${targetUser.firstName} ${targetUser.lastName} has been deleted successfully`,
+      };
+    },
+    {
+      params: t.Object({
+        id: t.String(),
       }),
     }
   );

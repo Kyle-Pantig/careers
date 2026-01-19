@@ -4,6 +4,7 @@ import {
   getApplication,
   updateApplicationStatus,
   getUserApplications,
+  getPendingApplicationsCount,
   type Application,
 } from '@/lib/applications';
 
@@ -48,6 +49,17 @@ export function useUpdateApplicationStatus() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['applications', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['pending-applications-count'] });
     },
+  });
+}
+
+// Get pending applications count (admin)
+export function usePendingApplicationsCount() {
+  return useQuery({
+    queryKey: ['pending-applications-count'],
+    queryFn: () => getPendingApplicationsCount(),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
   });
 }

@@ -12,7 +12,7 @@ export default function NewJobPage() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: 'Admin', href: '/dashboard' },
+      { label: 'Dashboard', href: '/dashboard' },
       { label: 'Jobs', href: '/dashboard/jobs' },
       { label: 'New Job' },
     ]);

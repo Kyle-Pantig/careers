@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useJobs, useIndustries, useSaveJob, useUnsaveJob, useSavedJobs, useUserApplications } from '@/hooks';
+import { useJobs, useIndustries, useSaveJob, useUnsaveJob, useSavedJobs, useUserApplications, useTrackPageView } from '@/hooks';
 import { useAuth } from '@/context';
 import { useMainJobFilters } from '@/stores';
 import { MaxWidthLayout } from '@/components/careers';
@@ -73,6 +73,9 @@ const staggerContainer = {
 };
 
 export default function JobsPage() {
+  // Track jobs page view
+  useTrackPageView('JOBS');
+
   const router = useRouter();
   const { user } = useAuth();
   

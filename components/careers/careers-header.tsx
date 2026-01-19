@@ -25,8 +25,7 @@ import { cn } from '@/lib/utils';
 import { 
   Menu, 
   Briefcase, 
-  User,
-  Settings,
+  UserCircle,
   LogOut,
   LayoutDashboard,
   FileText,
@@ -57,6 +56,15 @@ export function CareersHeader() {
   };
 
   const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('staff');
+
+  // Check if profile is incomplete (only for non-admin/staff users)
+  const isProfileIncomplete = user && !isAdmin && (
+    !user.firstName?.trim() ||
+    !user.lastName?.trim() ||
+    !user.contactNumber?.trim() ||
+    !user.address?.trim() ||
+    !user.resumeUrl
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
@@ -115,6 +123,9 @@ export function CareersHeader() {
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
+                  {isProfileIncomplete && (
+                    <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-white" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -136,22 +147,21 @@ export function CareersHeader() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem asChild>
-                  <Link href="/my-applications" className="cursor-pointer">
-                    <FileText className="mr-2 h-4 w-4" />
-                    My Applications
-                  </Link>
-                </DropdownMenuItem>
+                {!isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-applications" className="cursor-pointer">
+                      <FileText className="mr-2 h-4 w-4" />
+                      My Applications
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    Account Center
+                    {isProfileIncomplete && (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-destructive" />
+                    )}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -224,22 +234,6 @@ export function CareersHeader() {
                       </Link>
                     );
                   })}
-                  
-                  {isAdmin && (
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors',
-                        pathname === '/dashboard'
-                          ? 'bg-zinc-100 text-zinc-900'
-                          : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
-                      )}
-                    >
-                      <LayoutDashboard className="h-5 w-5" />
-                      Dashboard
-                    </Link>
-                  )}
                 </nav>
 
                 <div className="my-4 h-px bg-zinc-200" />
@@ -256,11 +250,16 @@ export function CareersHeader() {
                 ) : user ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-3 px-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-zinc-900 text-white">
-                          {getInitials()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-zinc-900 text-white">
+                            {getInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {isProfileIncomplete && (
+                          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-white" />
+                        )}
+                      </div>
                       <div className="flex flex-col">
                         <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -268,34 +267,46 @@ export function CareersHeader() {
                     </div>
                     
                     <nav className="flex flex-col gap-1">
-                      <Link
-                        href="/my-applications"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          'flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors',
-                          pathname === '/my-applications'
-                            ? 'bg-zinc-100 text-zinc-900'
-                            : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
-                        )}
-                      >
-                        <FileText className="h-5 w-5" />
-                        My Applications
-                      </Link>
+                      {!isAdmin && (
+                        <Link
+                          href="/my-applications"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors',
+                            pathname === '/my-applications'
+                              ? 'bg-zinc-100 text-zinc-900'
+                              : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                          )}
+                        >
+                          <FileText className="h-5 w-5" />
+                          My Applications
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors',
+                            pathname === '/dashboard'
+                              ? 'bg-zinc-100 text-zinc-900'
+                              : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                          )}
+                        >
+                          <LayoutDashboard className="h-5 w-5" />
+                          Dashboard
+                        </Link>
+                      )}
                       <Link
                         href="/profile"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                       >
-                        <User className="h-5 w-5" />
-                        Profile
-                      </Link>
-                      <Link
-                        href="/settings"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                      >
-                        <Settings className="h-5 w-5" />
-                        Settings
+                        <UserCircle className="h-5 w-5" />
+                        Account Center
+                        {isProfileIncomplete && (
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive" />
+                        )}
                       </Link>
                     </nav>
 

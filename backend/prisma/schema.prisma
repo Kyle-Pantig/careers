@@ -18,6 +18,13 @@ enum EmailTokenType {
   VERIFICATION
   PASSWORD_RESET
   MAGIC_LINK
+  ACCOUNT_LINK // Token for linking OAuth account to existing credentials account
+  INVITATION   // Token for admin inviting users (admin/staff)
+}
+
+enum AuthProvider {
+  CREDENTIALS
+  GOOGLE
 }
 
 model User {
@@ -32,11 +39,12 @@ model User {
   resumeFileName  String?   // Original filename of resume
   resumeUploadedAt DateTime? // When the resume was uploaded
 
-  passwordHash String
+  passwordHash String?   // Optional - null for OAuth-only users
   lastLoginAt  DateTime?
   isActive     Boolean   @default(true)
 
   roles        UserRole[]
+  accounts     Account[]  // OAuth accounts linked to this user
   applications JobApplication[]
   savedJobs    SavedJob[]
 
@@ -44,6 +52,31 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+// OAuth Account model - stores OAuth provider accounts linked to users
+// A user can have multiple accounts (e.g., credentials + google)
+model Account {
+  id                String       @id @default(uuid()) @db.Uuid
+  userId            String       @db.Uuid
+  provider          AuthProvider
+  providerAccountId String       // The user's ID from the OAuth provider (e.g., Google sub)
+  
+  // OAuth tokens (optional, for future use like refreshing access)
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Each provider account can only be linked once
+  @@unique([provider, providerAccountId])
+  // A user can only have one account per provider
+  @@unique([userId, provider])
+  @@map("accounts")
 }
 
 model Role {
@@ -241,4 +274,51 @@ model SavedJob {
 
   @@unique([userId, jobId])
   @@map("saved_jobs")
+}
+
+// ============================================
+// Page Views Analytics (Daily Aggregates)
+// ============================================
+
+enum PageType {
+  HOME
+  JOBS
+}
+
+model DailyPageView {
+  id    String   @id @default(uuid()) @db.Uuid
+  page  PageType
+  date  DateTime @db.Date  // Date only (no time)
+  count Int      @default(0)
+
+  @@unique([page, date])  // One record per page per day
+  @@index([date])
+  @@map("daily_page_views")
+}
+
+// ============================================
+// Email Templates
+// ============================================
+
+enum EmailTemplateType {
+  APPLICATION_CONFIRMATION  // Sent when user submits application
+  APPLICATION_REVIEWED      // Sent when application is marked as reviewed
+  APPLICATION_REJECTION     // Sent when application is rejected
+  INTERVIEW_INVITATION      // Sent when inviting candidate to interview
+  JOB_OFFER                 // Sent when extending job offer
+  APPLICATION_FOLLOW_UP     // General follow-up email
+}
+
+model EmailTemplate {
+  id          String            @id @default(uuid()) @db.Uuid
+  type        EmailTemplateType @unique
+  name        String            // Display name for the template
+  subject     String            // Email subject line (supports placeholders)
+  body        String            @db.Text // HTML body content (supports placeholders)
+  isActive    Boolean           @default(true)
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("email_templates")
 }

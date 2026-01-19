@@ -248,17 +248,17 @@ export default function ApplicationDetailPage() {
         </Button>
 
         {/* Status Card */}
-        <Card className={`border-2 ${status.borderClass} ${status.bgClass}`}>
-          <CardContent className="py-6">
-            <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-full ${status.bgClass} ${status.textClass}`}>
+        <Card className={`border ${status.borderClass} ${status.bgClass}`}>
+          <CardContent className="py-0">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-full ${status.bgClass} ${status.textClass}`}>
                 {status.icon}
               </div>
               <div className="flex-1">
-                <h2 className={`text-xl font-semibold ${status.textClass}`}>
+                <h2 className={`text-lg font-semibold ${status.textClass}`}>
                   {status.label}
                 </h2>
-                <p className="text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground">
                   {status.description}
                 </p>
               </div>

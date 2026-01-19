@@ -25,7 +25,7 @@ export default function EditJobPage() {
         setJob(result.job);
         // Set breadcrumbs with job title
         setBreadcrumbs([
-          { label: 'Admin', href: '/dashboard' },
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Jobs', href: '/dashboard/jobs' },
           { label: result.job.title },
         ]);

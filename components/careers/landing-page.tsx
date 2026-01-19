@@ -21,7 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useJobs, useIndustries } from "@/hooks";
+import { useJobs, useIndustries, useTrackPageView } from "@/hooks";
 import { useAuth } from "@/context";
 import { WORK_TYPE_LABELS } from "@/shared/validators";
 
@@ -65,7 +65,7 @@ export function LandingHero() {
           >
             Find Your Next
             <motion.span 
-              className="block text-primary"
+              className="block mt-2 text-primary [text-shadow:0_0_40px_hsl(var(--primary)/0.6),0_0_80px_hsl(var(--primary)/0.4),0_0_120px_hsl(var(--primary)/0.2)]"
               variants={fadeInUp}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
@@ -485,6 +485,9 @@ export function LandingFooter() {
 }
 
 export function LandingPage() {
+  // Track home page view
+  useTrackPageView('HOME');
+
   return (
     <div>
       <LandingHero />

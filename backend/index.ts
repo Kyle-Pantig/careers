@@ -6,6 +6,9 @@ import { industryRoutes } from './src/routes/industries';
 import { applicationRoutes } from './src/routes/applications';
 import { savedJobRoutes } from './src/routes/saved-jobs';
 import { userRoutes } from './src/routes/users';
+import { emailTemplateRoutes } from './src/routes/email-templates';
+import { dashboardRoutes } from './src/routes/dashboard';
+import { analyticsRoutes } from './src/routes/analytics';
 
 const app = new Elysia()
   .use(cors({ 
@@ -19,6 +22,9 @@ const app = new Elysia()
   .use(applicationRoutes)
   .use(savedJobRoutes)
   .use(userRoutes)
+  .use(emailTemplateRoutes)
+  .use(dashboardRoutes)
+  .use(analyticsRoutes)
   .listen(3001);
 
 console.log('🦊 Elysia running at http://localhost:3001');

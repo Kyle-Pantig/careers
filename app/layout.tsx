@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider, QueryProvider } from "@/context";
+import { AuthProvider, QueryProvider, GoogleOAuthProvider } from "@/context";
 import { Toaster } from "sonner";
 import NextTopLoader from "nextjs-toploader";
 import { NavigationLoader } from "@/components/navigation-loader";
+import { ProfileCompletionDialog } from "@/components/profile-completion-dialog";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -112,9 +113,12 @@ export default function RootLayout({
         />
         <NavigationLoader />
         <QueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <GoogleOAuthProvider>
+            <AuthProvider>
+              {children}
+              <ProfileCompletionDialog />
+            </AuthProvider>
+          </GoogleOAuthProvider>
         </QueryProvider>
         <Toaster position="top-right" richColors />
       </body>

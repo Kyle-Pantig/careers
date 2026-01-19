@@ -5,6 +5,8 @@ import {
   updateUserRole,
   toggleUserActive,
   updateUserPermissionLevel,
+  deleteUser,
+  resendInvitation,
   type User,
   type Role,
   type UserFilters,
@@ -84,6 +86,30 @@ export function useUpdateUserPermissionLevel() {
       userId: string;
       permissionLevel: string | null;
     }) => updateUserPermissionLevel(userId, permissionLevel),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
+    },
+  });
+}
+
+// Delete user mutation
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => deleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
+    },
+  });
+}
+
+// Resend invitation mutation
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => resendInvitation(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
     },

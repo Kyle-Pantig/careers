@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia';
 import { createHash } from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
+import { verifyToken } from '../lib/auth';
 import { PERMISSIONS } from '../../../shared/validators/permissions';
 
 // Hash IP address for privacy
@@ -205,10 +206,78 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
     }
   )
 
-  // Get single job by job number (for preview)
+  // Get single job by job number (public view - only published jobs)
   .get(
     '/number/:jobNumber',
     async ({ params, set }) => {
+      const job = await prisma.job.findUnique({
+        where: { jobNumber: params.jobNumber },
+        include: {
+          industry: true,
+          _count: {
+            select: { applications: true, views: true },
+          },
+        },
+      });
+
+      if (!job) {
+        set.status = 404;
+        return { error: 'Job not found' };
+      }
+
+      // Only return published jobs on public page
+      if (!job.isPublished) {
+        set.status = 404;
+        return { error: 'Job not found' };
+      }
+
+      return { job };
+    },
+    {
+      params: t.Object({
+        jobNumber: t.String(),
+      }),
+    }
+  )
+
+  // Get single job by job number (admin preview - includes unpublished)
+  .get(
+    '/admin/number/:jobNumber',
+    async ({ params, cookie, set }) => {
+      // Verify admin/staff
+      const token = cookie.token?.value as string | undefined;
+      if (!token) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const payload = verifyToken(token);
+      if (!payload) {
+        set.status = 401;
+        return { error: 'Invalid token' };
+      }
+
+      // Check if user is admin or staff
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          roles: {
+            include: { role: true },
+          },
+        },
+      });
+
+      if (!user) {
+        set.status = 404;
+        return { error: 'User not found' };
+      }
+
+      const roles = user.roles.map((ur) => ur.role.name);
+      if (!roles.includes('admin') && !roles.includes('staff')) {
+        set.status = 403;
+        return { error: 'Access denied' };
+      }
+
       const job = await prisma.job.findUnique({
         where: { jobNumber: params.jobNumber },
         include: {

@@ -4,6 +4,7 @@ import {
   getAdminJobs,
   getJob,
   getJobByNumber,
+  getJobByNumberAdmin,
   createJob,
   updateJob,
   deleteJob,
@@ -59,12 +60,24 @@ export function useJob(id: string) {
   });
 }
 
-// Get single job by job number
+// Get single job by job number (public - only published)
 export function useJobByNumber(jobNumber: string) {
   return useQuery({
     queryKey: jobKeys.byNumber(jobNumber),
     queryFn: async () => {
       const result = await getJobByNumber(jobNumber);
+      return result.job;
+    },
+    enabled: !!jobNumber,
+  });
+}
+
+// Get single job by job number (admin - includes unpublished)
+export function useJobByNumberAdmin(jobNumber: string) {
+  return useQuery({
+    queryKey: [...jobKeys.byNumber(jobNumber), 'admin'],
+    queryFn: async () => {
+      const result = await getJobByNumberAdmin(jobNumber);
       return result.job;
     },
     enabled: !!jobNumber,

@@ -1,11 +1,12 @@
 import { Elysia, t } from 'elysia';
 import { prisma } from '../lib/prisma';
 import { hashPassword, verifyPassword, generateToken, verifyToken, generateEmailToken } from '../lib/auth';
-import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../lib/email';
+import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail, sendUserInvitationEmail } from '../lib/email';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const EMAIL_COOLDOWN_SECONDS = 60; // 1 minute cooldown between email requests
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Cookie options
 const COOKIE_OPTIONS = {
@@ -120,6 +121,12 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       if (!user.isActive) {
         set.status = 403;
         return { error: 'Your account has been deactivated. Please contact support for assistance.' };
+      }
+
+      // Check if user has a password (OAuth-only users don't)
+      if (!user.passwordHash) {
+        set.status = 401;
+        return { error: 'This account uses Google sign-in. Please continue with Google instead.' };
       }
 
       // Verify password
@@ -598,6 +605,9 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     const isAdmin = user.roles.some((ur: { role: { name: string } }) => ur.role.name === 'admin');
     const staffRole = user.roles.find((ur: { role: { name: string } }) => ur.role.name === 'staff');
     
+    // Check if user is the super admin (primary admin from env)
+    const isSuperAdmin = isAdmin && user.email === process.env.ADMIN_EMAIL;
+    
     // Determine permission level:
     // - Admin: 'canEdit' (full access)
     // - Staff: their assigned permissionLevel ('canEdit' or 'canRead')
@@ -623,6 +633,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         resumeUploadedAt: user.resumeUploadedAt,
         roles: user.roles.map((ur: { role: { name: string } }) => ur.role.name),
         permissionLevel,
+        isSuperAdmin,
       },
     };
   })
@@ -879,6 +890,12 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       return { error: 'User not found' };
     }
 
+    // Check if user has a password (credentials account)
+    if (!user.passwordHash) {
+      set.status = 400;
+      return { error: 'Cannot change password for OAuth-only accounts. Please link a password first.' };
+    }
+
     // Verify current password
     const isValidPassword = await verifyPassword(currentPassword, user.passwordHash);
     if (!isValidPassword) {
@@ -908,4 +925,891 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       currentPassword: t.String({ minLength: 1 }),
       newPassword: t.String({ minLength: 8 }),
     }),
-  });
+  })
+
+  // Set password for OAuth-only users (no existing password)
+  .post('/me/set-password', async ({ body, cookie, set }) => {
+    const token = cookie.token?.value;
+    
+    if (!token) {
+      set.status = 401;
+      return { error: 'Unauthorized' };
+    }
+
+    const payload = verifyToken(token as string);
+
+    if (!payload) {
+      cookie.token.set({ value: '', maxAge: 0 });
+      set.status = 401;
+      return { error: 'Invalid token' };
+    }
+
+    const { password } = body;
+
+    // Get user with password hash
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, passwordHash: true },
+    });
+
+    if (!user) {
+      set.status = 404;
+      return { error: 'User not found' };
+    }
+
+    // Check if user already has a password
+    if (user.passwordHash) {
+      set.status = 400;
+      return { error: 'You already have a password set. Use change password instead.' };
+    }
+
+    // Hash and set password
+    const newPasswordHash = await hashPassword(password);
+    await prisma.user.update({
+      where: { id: payload.userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Also create a credentials account entry if not exists
+    const existingCredentialsAccount = await (prisma as any).account.findFirst({
+      where: {
+        userId: payload.userId,
+        provider: 'CREDENTIALS',
+      },
+    });
+
+    if (!existingCredentialsAccount) {
+      await (prisma as any).account.create({
+        data: {
+          userId: payload.userId,
+          provider: 'CREDENTIALS',
+          providerAccountId: payload.userId, // Use userId as providerAccountId for credentials
+        },
+      });
+    }
+
+    return {
+      message: 'Password set successfully. You can now log in with your email and password.',
+    };
+  }, {
+    body: t.Object({
+      password: t.String({ minLength: 8 }),
+    }),
+  })
+
+  // ============================================
+  // Google OAuth Routes
+  // ============================================
+
+  // Google Sign-In - verify Google access token and create/get user
+  .post(
+    '/google',
+    async ({ body, set, cookie }) => {
+      const { credential } = body;
+
+      try {
+        // Get user info from Google using the access token (v3 API)
+        const googleResponse = await fetch(
+          'https://www.googleapis.com/oauth2/v3/userinfo',
+          {
+            headers: { Authorization: `Bearer ${credential}` }
+          }
+        );
+
+        if (!googleResponse.ok) {
+          set.status = 401;
+          return { error: 'Invalid Google token' };
+        }
+
+        const googleData = await googleResponse.json();
+        const { email, name, picture, sub: googleId, given_name, family_name, email_verified } = googleData;
+
+        if (!email) {
+          set.status = 401;
+          return { error: 'No email from Google' };
+        }
+
+        // Check if Google account is already linked to a user
+        const existingAccount = await (prisma as any).account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: 'GOOGLE',
+              providerAccountId: googleId,
+            },
+          },
+          include: {
+            user: {
+              include: {
+                roles: { include: { role: true } },
+              },
+            },
+          },
+        });
+
+        if (existingAccount) {
+          // User already has Google linked - log them in
+          const user = existingAccount.user;
+
+          if (!user.isActive) {
+            set.status = 403;
+            return { error: 'Your account has been deactivated. Please contact support for assistance.' };
+          }
+
+          // Update last login
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() },
+          });
+
+          // Generate token and set cookie
+          const roles = user.roles.map((ur: { role: { name: string } }) => ur.role.name);
+          const jwtToken = generateToken({
+            userId: user.id,
+            email: user.email,
+            roles,
+          });
+
+          cookie.token.set({
+            value: jwtToken,
+            ...COOKIE_OPTIONS,
+          });
+
+          return {
+            user: {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              emailVerified: user.emailVerified,
+              roles,
+            },
+          };
+        }
+
+        // Check if a user with this email exists (credentials account)
+        const existingUser = await (prisma.user.findUnique as any)({
+          where: { email },
+          include: {
+            accounts: true,
+            roles: { include: { role: true } },
+          },
+        });
+
+        if (existingUser) {
+          // Check if this is an invited user who hasn't set up their password yet
+          // They need to accept their invitation first to set up a password
+          if (!existingUser.passwordHash) {
+            set.status = 400;
+            return {
+              error: 'Please accept your invitation first. Check your email for the invitation link to set up your account and password.',
+              requiresInvitation: true,
+            };
+          }
+
+          // User exists with credentials (has password) - need to link accounts
+          // Create a temporary token
+          const linkToken = generateEmailToken();
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+          await (prisma.emailToken.create as any)({
+            data: {
+              email,
+              token: linkToken,
+              type: 'ACCOUNT_LINK',
+              expiresAt,
+            },
+          });
+
+          // Return link required response with Google user info
+          set.status = 409; // Conflict - account exists
+          return {
+            error: 'Account exists with this email',
+            requiresLink: true,
+            linkToken,
+            provider: 'google',
+            providerName: name || `${given_name} ${family_name}`,
+            email,
+            googleId,
+          };
+        }
+
+        // New user - create account with Google
+        let userRole = await prisma.role.findUnique({ where: { name: 'user' } });
+        if (!userRole) {
+          userRole = await prisma.role.create({
+            data: { name: 'user', description: 'Default user role' },
+          });
+        }
+
+        // Create the user
+        const newUser = await (prisma.user.create as any)({
+          data: {
+            firstName: given_name || name?.split(' ')[0] || 'User',
+            lastName: family_name || name?.split(' ').slice(1).join(' ') || '',
+            email,
+            emailVerified: email_verified || true, // Google accounts are verified
+            passwordHash: null,
+            roles: {
+              create: { roleId: userRole.id },
+            },
+            accounts: {
+              create: {
+                provider: 'GOOGLE',
+                providerAccountId: googleId,
+              },
+            },
+          },
+          include: {
+            roles: { include: { role: true } },
+          },
+        });
+
+        // Update last login
+        await prisma.user.update({
+          where: { id: newUser.id },
+          data: { lastLoginAt: new Date() },
+        });
+
+        // Generate token and set cookie
+        const roles = newUser.roles.map((ur: { role: { name: string } }) => ur.role.name);
+        const jwtToken = generateToken({
+          userId: newUser.id,
+          email: newUser.email,
+          roles,
+        });
+
+        cookie.token.set({
+          value: jwtToken,
+          ...COOKIE_OPTIONS,
+        });
+
+        return {
+          user: {
+            id: newUser.id,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            email: newUser.email,
+            emailVerified: newUser.emailVerified,
+            roles,
+          },
+          isNewUser: true,
+        };
+      } catch (err) {
+        console.error('Google auth error:', err);
+        set.status = 500;
+        return { error: 'Failed to authenticate with Google' };
+      }
+    },
+    {
+      body: t.Object({
+        credential: t.String(),
+      }),
+    }
+  )
+
+
+  // Confirm linking Google account to existing credentials account
+  .post(
+    '/link-account/confirm',
+    async ({ body, set, cookie }) => {
+      const { token, password } = body;
+
+      // Find the link token
+      const emailToken = await (prisma.emailToken.findUnique as any)({
+        where: { token, type: 'ACCOUNT_LINK' },
+      });
+
+      if (!emailToken) {
+        set.status = 400;
+        return { error: 'Invalid or expired link token. Please try signing in with Google again.' };
+      }
+
+      if (emailToken.expiresAt < new Date()) {
+        await prisma.emailToken.delete({ where: { id: emailToken.id } });
+        set.status = 400;
+        return { error: 'Link token has expired. Please try signing in with Google again.' };
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: emailToken.email },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!user) {
+        set.status = 400;
+        return { error: 'User not found.' };
+      }
+
+      if (!user.isActive) {
+        set.status = 403;
+        return { error: 'Your account has been deactivated. Please contact support for assistance.' };
+      }
+
+      // Verify password
+      if (!user.passwordHash) {
+        set.status = 400;
+        return { error: 'Account does not have a password set.' };
+      }
+
+      const isValid = await verifyPassword(password, user.passwordHash);
+      if (!isValid) {
+        set.status = 401;
+        return { error: 'Invalid password.' };
+      }
+
+      // Delete the link token
+      await prisma.emailToken.delete({ where: { id: emailToken.id } });
+
+      // Now we need to initiate a new Google OAuth flow to get the Google user info
+      // Return a success response with the email - the frontend will redirect to Google OAuth again
+      return {
+        message: 'Password verified. Please complete the linking process.',
+        needsGoogleAuth: true,
+        email: user.email,
+      };
+    },
+    {
+      body: t.Object({
+        token: t.String(),
+        password: t.String(),
+      }),
+    }
+  )
+
+  // Complete the account linking after password verification
+  .post(
+    '/link-account/complete',
+    async ({ body, set, cookie }) => {
+      const { email, googleId } = body;
+
+      // Find the user
+      const user = await (prisma.user.findUnique as any)({
+        where: { email },
+        include: {
+          accounts: true,
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!user) {
+        set.status = 400;
+        return { error: 'User not found.' };
+      }
+
+      // Check if Google account is already linked
+      const hasGoogle = user.accounts.some((acc: any) => acc.provider === 'GOOGLE');
+      if (hasGoogle) {
+        set.status = 400;
+        return { error: 'Google account is already linked.' };
+      }
+
+      // Check if this Google account is linked to another user
+      const existingGoogleAccount = await (prisma as any).account.findUnique({
+        where: {
+          provider_providerAccountId: {
+            provider: 'GOOGLE',
+            providerAccountId: googleId,
+          },
+        },
+      });
+
+      if (existingGoogleAccount) {
+        set.status = 400;
+        return { error: 'This Google account is already linked to another user.' };
+      }
+
+      // Link the Google account
+      await (prisma as any).account.create({
+        data: {
+          userId: user.id,
+          provider: 'GOOGLE',
+          providerAccountId: googleId,
+        },
+      });
+
+      // Mark email as verified if not already
+      if (!user.emailVerified) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true },
+        });
+      }
+
+      // Update last login
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
+      // Generate token and set cookie
+      const roles = user.roles.map((ur: { role: { name: string } }) => ur.role.name);
+      const jwtToken = generateToken({
+        userId: user.id,
+        email: user.email,
+        roles,
+      });
+
+      cookie.token.set({
+        value: jwtToken,
+        ...COOKIE_OPTIONS,
+      });
+
+      return {
+        message: 'Google account linked successfully.',
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          emailVerified: true,
+          roles,
+        },
+      };
+    },
+    {
+      body: t.Object({
+        email: t.String({ format: 'email' }),
+        googleId: t.String(),
+      }),
+    }
+  )
+
+
+  // Get linked accounts for current user
+  .get('/me/accounts', async ({ cookie, set }) => {
+    const token = cookie.token?.value;
+    
+    if (!token) {
+      set.status = 401;
+      return { error: 'Unauthorized' };
+    }
+
+    const payload = verifyToken(token as string);
+
+    if (!payload) {
+      cookie.token.set({ value: '', maxAge: 0 });
+      set.status = 401;
+      return { error: 'Invalid token' };
+    }
+
+    const user = await (prisma.user.findUnique as any)({
+      where: { id: payload.userId },
+      include: {
+        accounts: {
+          select: {
+            id: true,
+            provider: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      set.status = 404;
+      return { error: 'User not found' };
+    }
+
+    // Determine if user has credentials (password)
+    const hasCredentials = !!user.passwordHash;
+
+    return {
+      accounts: user.accounts.map((acc: any) => ({
+        id: acc.id,
+        provider: acc.provider,
+        linkedAt: acc.createdAt,
+      })),
+      hasCredentials,
+    };
+  })
+
+  // ============================================
+  // User Invitation (Admin Only)
+  // ============================================
+
+  // Invite a user (admin only)
+  .post(
+    '/invite',
+    async ({ body, cookie, set }) => {
+      const { email, role, permissionLevel } = body;
+
+      // Verify admin is logged in
+      const token = cookie.token?.value;
+      if (!token) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const payload = verifyToken(token as string);
+      if (!payload) {
+        set.status = 401;
+        return { error: 'Invalid token' };
+      }
+
+      // Check if requester is admin
+      const adminUser = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!adminUser) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const isAdmin = adminUser.roles.some(r => r.role.name === 'admin');
+      if (!isAdmin) {
+        set.status = 403;
+        return { error: 'Only admins can invite users' };
+      }
+
+      // Check if email already exists
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        set.status = 400;
+        return { error: 'A user with this email already exists' };
+      }
+
+      // Get the role
+      const roleRecord = await prisma.role.findUnique({ where: { name: role } });
+      if (!roleRecord) {
+        set.status = 400;
+        return { error: 'Invalid role' };
+      }
+
+      // Create the user without password (will be set on acceptance)
+      // User is inactive until they accept the invitation
+      const newUser = await prisma.user.create({
+        data: {
+          firstName: '', // Will be set on acceptance
+          lastName: '',  // Will be set on acceptance
+          email,
+          passwordHash: null as any, // No password yet
+          emailVerified: true, // Auto-verified for invited users
+          isActive: false, // Inactive until invitation is accepted
+          roles: {
+            create: {
+              roleId: roleRecord.id,
+              permissionLevel: role === 'staff' ? permissionLevel : null,
+            },
+          },
+        },
+      });
+
+      // Generate invitation token (7 days expiry)
+      const invitationToken = generateEmailToken();
+      await prisma.emailToken.create({
+        data: {
+          email,
+          token: invitationToken,
+          type: 'INVITATION' as any,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+
+      // Send invitation email
+      try {
+        await sendUserInvitationEmail({
+          email,
+          role,
+          invitedBy: `${adminUser.firstName} ${adminUser.lastName}`,
+          token: invitationToken,
+        });
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // Don't fail the request if email fails, user can still be found in the list
+      }
+
+      return {
+        success: true,
+        message: `Invitation sent to ${email}`,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          role,
+        },
+      };
+    },
+    {
+      body: t.Object({
+        email: t.String({ format: 'email' }),
+        role: t.Union([t.Literal('admin'), t.Literal('staff')]),
+        permissionLevel: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // Verify invitation token (check if valid)
+  .get(
+    '/invitation/verify',
+    async ({ query, set }) => {
+      const { token } = query;
+
+      if (!token) {
+        set.status = 400;
+        return { error: 'Token is required' };
+      }
+
+      const emailToken = await prisma.emailToken.findUnique({
+        where: { token },
+      });
+
+      if (!emailToken || emailToken.type !== ('INVITATION' as any)) {
+        set.status = 400;
+        return { error: 'Invalid invitation token', valid: false };
+      }
+
+      if (emailToken.expiresAt < new Date()) {
+        set.status = 400;
+        return { error: 'Invitation has expired', valid: false };
+      }
+
+      // Get user info
+      const user = await prisma.user.findUnique({
+        where: { email: emailToken.email },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!user) {
+        set.status = 400;
+        return { error: 'User not found', valid: false };
+      }
+
+      // Check if user already has a password (invitation already accepted)
+      if (user.passwordHash) {
+        set.status = 400;
+        return { error: 'Invitation has already been accepted', valid: false };
+      }
+
+      const roleName = user.roles[0]?.role.name || 'staff';
+
+      return {
+        valid: true,
+        email: emailToken.email,
+        role: roleName,
+      };
+    },
+    {
+      query: t.Object({
+        token: t.String(),
+      }),
+    }
+  )
+
+  // Accept invitation and set up account
+  .post(
+    '/invitation/accept',
+    async ({ body, cookie, set }) => {
+      const { token, firstName, lastName, password } = body;
+
+      // Find the invitation token
+      const emailToken = await prisma.emailToken.findUnique({
+        where: { token },
+      });
+
+      if (!emailToken || emailToken.type !== ('INVITATION' as any)) {
+        set.status = 400;
+        return { error: 'Invalid invitation token' };
+      }
+
+      if (emailToken.expiresAt < new Date()) {
+        set.status = 400;
+        return { error: 'Invitation has expired' };
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: emailToken.email },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!user) {
+        set.status = 400;
+        return { error: 'User not found' };
+      }
+
+      // Check if already set up
+      if (user.passwordHash) {
+        set.status = 400;
+        return { error: 'Account has already been set up' };
+      }
+
+      // Hash password
+      const passwordHash = await hashPassword(password);
+
+      // Update user with name, password and activate the account
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          firstName,
+          lastName,
+          passwordHash,
+          isActive: true, // Activate account on acceptance
+        },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      // Delete the invitation token
+      await prisma.emailToken.delete({
+        where: { token },
+      });
+
+      // Create credentials account entry
+      await (prisma as any).account.create({
+        data: {
+          userId: updatedUser.id,
+          provider: 'CREDENTIALS',
+          providerAccountId: updatedUser.id, // Use user ID as provider account ID for credentials
+        },
+      });
+
+      // Generate JWT and set cookie
+      const roles = updatedUser.roles.map(r => r.role.name);
+      const jwtToken = generateToken({
+        userId: updatedUser.id,
+        email: updatedUser.email,
+        roles,
+      });
+
+      cookie.token.set({
+        value: jwtToken,
+        ...COOKIE_OPTIONS,
+      });
+
+      return {
+        success: true,
+        message: 'Account set up successfully',
+        user: {
+          id: updatedUser.id,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          email: updatedUser.email,
+          emailVerified: updatedUser.emailVerified,
+          roles,
+        },
+      };
+    },
+    {
+      body: t.Object({
+        token: t.String(),
+        firstName: t.String({ minLength: 1 }),
+        lastName: t.String({ minLength: 1 }),
+        password: t.String({ minLength: 8 }),
+      }),
+    }
+  )
+
+  // Resend invitation (admin only)
+  .post(
+    '/invitation/resend',
+    async ({ body, cookie, set }) => {
+      const { userId } = body;
+
+      // Verify admin is logged in
+      const token = cookie.token?.value;
+      if (!token) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const payload = verifyToken(token as string);
+      if (!payload) {
+        set.status = 401;
+        return { error: 'Invalid token' };
+      }
+
+      // Check if requester is admin
+      const adminUser = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!adminUser) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const isAdmin = adminUser.roles.some(r => r.role.name === 'admin');
+      if (!isAdmin) {
+        set.status = 403;
+        return { error: 'Only admins can resend invitations' };
+      }
+
+      // Find the invited user
+      const invitedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+
+      if (!invitedUser) {
+        set.status = 404;
+        return { error: 'User not found' };
+      }
+
+      // Check if user already has a password (already set up)
+      if (invitedUser.passwordHash) {
+        set.status = 400;
+        return { error: 'User has already set up their account' };
+      }
+
+      // Delete any existing invitation tokens for this email
+      await prisma.emailToken.deleteMany({
+        where: {
+          email: invitedUser.email,
+          type: 'INVITATION' as any,
+        },
+      });
+
+      // Generate new invitation token
+      const invitationToken = generateEmailToken();
+      await prisma.emailToken.create({
+        data: {
+          email: invitedUser.email,
+          token: invitationToken,
+          type: 'INVITATION' as any,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+
+      const roleName = invitedUser.roles[0]?.role.name || 'staff';
+
+      // Send invitation email
+      try {
+        await sendUserInvitationEmail({
+          email: invitedUser.email,
+          role: roleName,
+          invitedBy: `${adminUser.firstName} ${adminUser.lastName}`,
+          token: invitationToken,
+        });
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        set.status = 500;
+        return { error: 'Failed to send invitation email' };
+      }
+
+      return {
+        success: true,
+        message: `Invitation resent to ${invitedUser.email}`,
+      };
+    },
+    {
+      body: t.Object({
+        userId: t.String(),
+      }),
+    }
+  );

@@ -27,6 +27,7 @@ import {
   Briefcase,
   MapPin,
   Building2,
+  Clock,
 } from 'lucide-react';
 import { WORK_TYPE_LABELS, JOB_TYPE_LABELS } from '@/shared/validators';
 
@@ -208,7 +209,7 @@ export default function JobApplyPage() {
     setIsSubmitting(true);
 
     try {
-      await submitApplication({
+      const result = await submitApplication({
         jobNumber,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -219,6 +220,7 @@ export default function JobApplyPage() {
         userId: user?.id || null,
       });
 
+      setApplicationId(result.application.id);
       setIsSuccess(true);
       toast.success('Application submitted successfully!');
     } catch (error) {
@@ -311,8 +313,8 @@ export default function JobApplyPage() {
                     </Link>
                   </Button>
                   <Button asChild>
-                    <Link href={`/jobs/${jobNumber}`}>
-                      View Job Details
+                    <Link href={applicationId ? `/my-applications/${applicationId}` : '/my-applications'}>
+                      View Application
                     </Link>
                   </Button>
                 </div>
@@ -357,7 +359,8 @@ export default function JobApplyPage() {
                 <Briefcase className="h-4 w-4" />
                 {WORK_TYPE_LABELS[job.workType]}
               </span>
-              <span className="text-sm border px-2 py-0.5 rounded">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
                 {JOB_TYPE_LABELS[job.jobType]}
               </span>
             </div>

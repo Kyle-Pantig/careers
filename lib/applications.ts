@@ -128,6 +128,21 @@ export async function getUserApplications(
   return result;
 }
 
+// Get pending applications count (admin)
+export async function getPendingApplicationsCount(): Promise<{ count: number }> {
+  const res = await fetch(`${API_URL}/applications/all?status=pending&limit=1`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    return { count: 0 };
+  }
+
+  return { count: result.pagination?.total || 0 };
+}
+
 // Get all applications (admin)
 export async function getAdminApplications(
   options: { page?: number; limit?: number; status?: string; search?: string } = {}
@@ -174,9 +189,24 @@ export async function getJobApplications(
   return result;
 }
 
-// Get single application
+// Get single application (for the owner)
 export async function getApplication(id: string): Promise<{ application: Application }> {
   const res = await fetch(`${API_URL}/applications/${id}`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to fetch application');
+  }
+
+  return result;
+}
+
+// Get single application (for admin/staff)
+export async function getAdminApplication(id: string): Promise<{ application: Application }> {
+  const res = await fetch(`${API_URL}/applications/admin/${id}`, {
     credentials: 'include',
   });
 

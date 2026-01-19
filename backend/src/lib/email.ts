@@ -1,12 +1,56 @@
 import { Resend } from 'resend';
+import { PrismaClient } from '@prisma/client';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const prisma = new PrismaClient();
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@yourdomain.com';
 const FROM_NAME = process.env.FROM_NAME || 'Careers Platform';
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 const FROM = `${FROM_NAME} <${FROM_EMAIL}>`;
+
+// Email template types matching the database enum
+type DbEmailTemplateType = 
+  | 'APPLICATION_CONFIRMATION'
+  | 'APPLICATION_REVIEWED'
+  | 'APPLICATION_REJECTION'
+  | 'INTERVIEW_INVITATION'
+  | 'JOB_OFFER'
+  | 'APPLICATION_FOLLOW_UP';
+
+// Helper function to get template from database
+async function getEmailTemplateFromDb(type: DbEmailTemplateType): Promise<{ subject: string; body: string } | null> {
+  try {
+    const template = await (prisma as any).$queryRaw`
+      SELECT subject, body, "isActive" FROM email_templates WHERE type = ${type}::"EmailTemplateType"
+    `;
+    
+    if (template && (template as any[]).length > 0 && (template as any[])[0].isActive) {
+      return {
+        subject: (template as any[])[0].subject,
+        body: (template as any[])[0].body,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching email template:', error);
+    return null;
+  }
+}
+
+// Helper function to replace placeholders in template
+function replacePlaceholders(template: string, data: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(data)) {
+    const placeholder = `{{${key}}}`;
+    result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+  }
+  // Remove any Handlebars conditionals for now (simplified handling)
+  result = result.replace(/\{\{#if\s+\w+\}\}/g, '');
+  result = result.replace(/\{\{\/if\}\}/g, '');
+  return result;
+}
 
 // Base email template wrapper
 function emailTemplate(content: string) {
@@ -211,108 +255,85 @@ export interface ApplicationConfirmationData {
 export async function sendApplicationConfirmationEmail(data: ApplicationConfirmationData) {
   const jobUrl = `${APP_URL}/jobs/${data.jobNumber}`;
 
-  const content = `
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-block; background-color: #dcfce7; border-radius: 50%; padding: 16px; margin-bottom: 16px;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
+  // Try to get template from database
+  const dbTemplate = await getEmailTemplateFromDb('APPLICATION_CONFIRMATION');
+  
+  let subject: string;
+  let content: string;
+
+  if (dbTemplate) {
+    // Use database template with placeholder replacement
+    const placeholderData = {
+      applicantName: data.applicantName,
+      jobTitle: data.jobTitle,
+      jobNumber: data.jobNumber,
+      companyLocation: data.companyLocation,
+      jobUrl: jobUrl,
+    };
+    subject = replacePlaceholders(dbTemplate.subject, placeholderData);
+    content = replacePlaceholders(dbTemplate.body, placeholderData);
+  } else {
+    // Fallback to hardcoded template
+    subject = `Application Received - ${data.jobTitle}`;
+    content = `
+      <div style="text-align: center; margin-bottom: 32px;">
+        <div style="display: inline-block; background-color: #dcfce7; border-radius: 50%; padding: 16px; margin-bottom: 16px;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
+          Application Received!
+        </h1>
+        <p style="margin: 0; font-size: 15px; color: #52525b;">
+          Thank you for applying, ${data.applicantName}
+        </p>
       </div>
-      <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
-        Application Received!
-      </h1>
-      <p style="margin: 0; font-size: 15px; color: #52525b;">
-        Thank you for applying, ${data.applicantName}
-      </p>
-    </div>
-    
-    <div style="background-color: #fafafa; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-      <p style="margin: 0 0 4px 0; font-size: 13px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">
-        Position Applied For
-      </p>
-      <h2 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #18181b;">
-        ${data.jobTitle}
-      </h2>
-      <p style="margin: 0; font-size: 14px; color: #52525b;">
-        ${data.companyLocation} • ${data.jobNumber}
-      </p>
-    </div>
-    
-    <div style="margin-bottom: 32px;">
-      <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #18181b;">
-        What happens next?
-      </h3>
+      
+      <div style="background-color: #fafafa; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+        <p style="margin: 0 0 4px 0; font-size: 13px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">
+          Position Applied For
+        </p>
+        <h2 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #18181b;">
+          ${data.jobTitle}
+        </h2>
+        <p style="margin: 0; font-size: 14px; color: #52525b;">
+          ${data.companyLocation} • ${data.jobNumber}
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 32px;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #18181b;">
+          What happens next?
+        </h3>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #52525b;">1. Application Review - Our team will review your application</p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #52525b;">2. Initial Screening - We'll reach out if your profile matches</p>
+        <p style="margin: 0; font-size: 14px; color: #52525b;">3. Interview Process - Selected candidates will be invited to interviews</p>
+      </div>
+      
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
-          <td style="padding-bottom: 12px;">
-            <table role="presentation" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="width: 28px; vertical-align: top;">
-                  <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">1</div>
-                </td>
-                <td style="padding-left: 12px;">
-                  <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Application Review</p>
-                  <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">Our team will carefully review your application and resume.</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-bottom: 12px;">
-            <table role="presentation" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="width: 28px; vertical-align: top;">
-                  <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">2</div>
-                </td>
-                <td style="padding-left: 12px;">
-                  <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Initial Screening</p>
-                  <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">If your profile matches our requirements, we'll reach out for a screening call.</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <table role="presentation" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="width: 28px; vertical-align: top;">
-                  <div style="width: 20px; height: 20px; background-color: #18181b; border-radius: 50%; color: #ffffff; font-size: 12px; font-weight: 600; text-align: center; line-height: 20px;">3</div>
-                </td>
-                <td style="padding-left: 12px;">
-                  <p style="margin: 0; font-size: 14px; color: #18181b; font-weight: 500;">Interview Process</p>
-                  <p style="margin: 4px 0 0 0; font-size: 13px; color: #71717a;">Selected candidates will be invited to participate in interviews.</p>
-                </td>
-              </tr>
-            </table>
+          <td align="center">
+            <a href="${jobUrl}" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 14px; font-weight: 500; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
+              View Job Details
+            </a>
           </td>
         </tr>
       </table>
-    </div>
-    
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-      <tr>
-        <td align="center">
-          <a href="${jobUrl}" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 14px; font-weight: 500; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
-            View Job Details
-          </a>
-        </td>
-      </tr>
-    </table>
-    
-    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-      <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
-        We appreciate your interest in joining our team. We'll be in touch soon with updates on your application status.
-      </p>
-    </div>
-  `;
+      
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+        <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+          We appreciate your interest in joining our team. We'll be in touch soon with updates on your application status.
+        </p>
+      </div>
+    `;
+  }
 
   await resend.emails.send({
     from: FROM,
     to: data.applicantEmail,
-    subject: `Application Received - ${data.jobTitle}`,
+    subject,
     html: emailTemplate(content),
   });
 }
@@ -385,233 +406,265 @@ export async function sendTemplateEmail(data: TemplateEmailData) {
   let subject = '';
   let content = '';
   
-  const greeting = `
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
-      Dear ${data.toName},
-    </p>
-  `;
+  // Map template types to database enum types
+  const dbTemplateTypeMap: Record<EmailTemplateType, DbEmailTemplateType> = {
+    'interview_invitation': 'INTERVIEW_INVITATION',
+    'rejection': 'APPLICATION_REJECTION',
+    'offer': 'JOB_OFFER',
+    'follow_up': 'APPLICATION_FOLLOW_UP',
+  };
+
+  // Format salary for offer template
+  const currencySymbols: Record<string, string> = {
+    'PHP': '₱', 'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+    'AUD': 'A$', 'CAD': 'C$', 'SGD': 'S$',
+  };
+  const periodLabels: Record<string, string> = {
+    'HOURLY': 'per hour', 'MONTHLY': 'per month', 'YEARLY': 'per year',
+  };
+  const salaryDisplay = data.customData?.salaryAmount 
+    ? `${currencySymbols[data.customData?.salaryCurrency || 'PHP'] || '₱'}${Number(data.customData?.salaryAmount).toLocaleString()} ${periodLabels[data.customData?.salaryPeriod || 'MONTHLY'] || 'per month'}`
+    : '';
+
+  // Try to get template from database
+  const dbTemplate = await getEmailTemplateFromDb(dbTemplateTypeMap[data.templateType]);
   
-  const jobInfo = `
-    <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
-      Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
-    </p>
-  `;
-  
-  const footer = `
-    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-      <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
-        If you have any questions, please don't hesitate to reach out.
+  if (dbTemplate) {
+    // Use database template with placeholder replacement
+    const placeholderData: Record<string, string> = {
+      applicantName: data.toName,
+      jobTitle: data.jobTitle,
+      jobNumber: data.jobNumber,
+      interviewDate: data.customData?.interviewDate || '',
+      interviewTime: data.customData?.interviewTime || '',
+      interviewType: data.customData?.interviewType || '',
+      interviewLocation: data.customData?.interviewLocation || '',
+      additionalNotes: data.customData?.additionalNotes || '',
+      salaryDisplay: salaryDisplay,
+      startDate: data.customData?.startDate || '',
+    };
+    subject = replacePlaceholders(dbTemplate.subject, placeholderData);
+    content = replacePlaceholders(dbTemplate.body, placeholderData);
+  } else {
+    // Fallback to hardcoded templates
+    const greeting = `
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+        Dear ${data.toName},
       </p>
-    </div>
-  `;
+    `;
+    
+    const jobInfo = `
+      <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+        Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
+      </p>
+    `;
+    
+    const footer = `
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+        <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+          If you have any questions, please don't hesitate to reach out.
+        </p>
+      </div>
+    `;
 
-  switch (data.templateType) {
-    case 'interview_invitation':
-      subject = `Interview Invitation - ${data.jobTitle}`;
-      content = `
-        <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-          Interview Invitation
-        </h1>
-        ${greeting}
-        ${jobInfo}
-        
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We are pleased to inform you that your application has been shortlisted, and we would like to invite you to an interview.
-        </p>
-        
-        <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
-          <h3 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #18181b;">
-            Interview Details
-          </h3>
-          <table role="presentation" cellspacing="0" cellpadding="0" style="font-size: 14px;">
-            ${data.customData?.interviewDate ? `
-            <tr>
-              <td style="color: #71717a; padding: 4px 16px 4px 0;">Date:</td>
-              <td style="color: #18181b; font-weight: 500;">${data.customData.interviewDate}</td>
-            </tr>
-            ` : ''}
-            ${data.customData?.interviewTime ? `
-            <tr>
-              <td style="color: #71717a; padding: 4px 16px 4px 0;">Time:</td>
-              <td style="color: #18181b; font-weight: 500;">${data.customData.interviewTime}</td>
-            </tr>
-            ` : ''}
-            ${data.customData?.interviewType ? `
-            <tr>
-              <td style="color: #71717a; padding: 4px 16px 4px 0;">Format:</td>
-              <td style="color: #18181b; font-weight: 500;">${data.customData.interviewType}</td>
-            </tr>
-            ` : ''}
-            ${data.customData?.interviewLocation ? `
-            <tr>
-              <td style="color: #71717a; padding: 4px 16px 4px 0;">Location:</td>
-              <td style="color: #18181b; font-weight: 500;">${data.customData.interviewLocation}</td>
-            </tr>
-            ` : ''}
-          </table>
-        </div>
-        
-        ${data.customData?.additionalNotes ? `
-        <p style="margin: 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          ${data.customData.additionalNotes}
-        </p>
-        ` : ''}
-        
-        <p style="margin: 16px 0 0 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          Please confirm your attendance by replying to this email or contacting us.
-        </p>
-        ${footer}
-      `;
-      break;
-
-    case 'rejection':
-      subject = `Thank You for Applying - ${data.jobTitle}`;
-      content = `
-        <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-          Thank You for Your Application
-        </h1>
-        ${greeting}
-        ${jobInfo}
-        
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          Thank you for taking the time to apply for the ${data.jobTitle} position and for your interest in joining our team. We truly appreciate the effort you put into your application.
-        </p>
-        
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          After careful consideration, we have decided to move forward with candidates whose qualifications more closely align with our current needs for this specific role. This was a difficult decision, as we received many impressive applications.
-        </p>
-        
-        <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; color: #854d0e; font-weight: 500;">
-            Don't be discouraged!
+    switch (data.templateType) {
+      case 'interview_invitation':
+        subject = `Interview Invitation - ${data.jobTitle}`;
+        content = `
+          <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+            Interview Invitation
+          </h1>
+          ${greeting}
+          ${jobInfo}
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We are pleased to inform you that your application has been shortlisted, and we would like to invite you to an interview.
           </p>
-          <p style="margin: 0; font-size: 13px; color: #854d0e; line-height: 1.5;">
-            This decision does not reflect on your abilities or potential. The job market is highly competitive, and the right opportunity for you is out there.
-          </p>
-        </div>
-        
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We encourage you to:
-        </p>
-        
-        <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; color: #18181b; line-height: 1.8;">
-          <li>Keep an eye on our careers page for future opportunities that match your skills</li>
-          <li>Continue developing your expertise in your field</li>
-          <li>Apply again in the future – we'd love to hear from you</li>
-        </ul>
-        
-        ${data.customData?.additionalNotes ? `
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          ${data.customData.additionalNotes}
-        </p>
-        ` : ''}
-        
-        <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We wish you all the best in your career journey and future endeavors. Thank you again for considering us as a potential employer.
-        </p>
-        
-        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-          <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
-            Warm regards,<br>
-            The Hiring Team
-          </p>
-        </div>
-      `;
-      break;
-
-    case 'offer':
-      subject = `Job Offer - ${data.jobTitle}`;
-      
-      // Format salary if provided
-      const currencySymbols: Record<string, string> = {
-        'PHP': '₱', 'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
-        'AUD': 'A$', 'CAD': 'C$', 'SGD': 'S$',
-      };
-      const periodLabels: Record<string, string> = {
-        'HOURLY': 'per hour', 'MONTHLY': 'per month', 'YEARLY': 'per year',
-      };
-      
-      const hasSalary = data.customData?.salaryAmount;
-      const salaryDisplay = hasSalary ? `${currencySymbols[data.customData?.salaryCurrency || 'PHP'] || '₱'}${Number(data.customData?.salaryAmount).toLocaleString()} ${periodLabels[data.customData?.salaryPeriod || 'MONTHLY'] || 'per month'}` : null;
-      
-      content = `
-        <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-          Congratulations! 🎉
-        </h1>
-        ${greeting}
-        ${jobInfo}
-        
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We are pleased to offer you the <strong>${data.jobTitle}</strong> position! Your qualifications and experience impressed us throughout the interview process.
-        </p>
-        
-        ${hasSalary ? `
-        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
-          <p style="margin: 0 0 8px 0; font-size: 13px; color: #166534; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
-            Compensation Package
-          </p>
-          <p style="margin: 0; font-size: 24px; color: #15803d; font-weight: 600;">
-            ${salaryDisplay}
-          </p>
-          ${data.customData?.startDate ? `
-          <p style="margin: 12px 0 0 0; font-size: 13px; color: #166534;">
-            <strong>Proposed Start Date:</strong> ${data.customData.startDate}
-          </p>
-          ` : ''}
-        </div>
-        ` : `
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          Please expect to receive the formal offer letter with complete details about compensation, benefits, and start date shortly.
-        </p>
-        `}
-        
-        ${data.customData?.additionalNotes ? `
-        <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
-          <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; font-weight: 500;">
-            Additional Information
-          </p>
-          <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+          
+          <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <h3 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #18181b;">
+              Interview Details
+            </h3>
+            <table role="presentation" cellspacing="0" cellpadding="0" style="font-size: 14px;">
+              ${data.customData?.interviewDate ? `
+              <tr>
+                <td style="color: #71717a; padding: 4px 16px 4px 0;">Date:</td>
+                <td style="color: #18181b; font-weight: 500;">${data.customData.interviewDate}</td>
+              </tr>
+              ` : ''}
+              ${data.customData?.interviewTime ? `
+              <tr>
+                <td style="color: #71717a; padding: 4px 16px 4px 0;">Time:</td>
+                <td style="color: #18181b; font-weight: 500;">${data.customData.interviewTime}</td>
+              </tr>
+              ` : ''}
+              ${data.customData?.interviewType ? `
+              <tr>
+                <td style="color: #71717a; padding: 4px 16px 4px 0;">Format:</td>
+                <td style="color: #18181b; font-weight: 500;">${data.customData.interviewType}</td>
+              </tr>
+              ` : ''}
+              ${data.customData?.interviewLocation ? `
+              <tr>
+                <td style="color: #71717a; padding: 4px 16px 4px 0;">Location:</td>
+                <td style="color: #18181b; font-weight: 500;">${data.customData.interviewLocation}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+          
+          ${data.customData?.additionalNotes ? `
+          <p style="margin: 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
             ${data.customData.additionalNotes}
           </p>
-        </div>
-        ` : ''}
-        
-        <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We look forward to welcoming you to our team!
-        </p>
-        ${footer}
-      `;
-      break;
+          ` : ''}
+          
+          <p style="margin: 16px 0 0 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            Please confirm your attendance by replying to this email or contacting us.
+          </p>
+          ${footer}
+        `;
+        break;
 
-    case 'follow_up':
-      subject = `Following Up - ${data.jobTitle}`;
-      content = `
-        <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-          Application Status Update
-        </h1>
-        ${greeting}
-        ${jobInfo}
+      case 'rejection':
+        subject = `Thank You for Applying - ${data.jobTitle}`;
+        content = `
+          <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+            Thank You for Your Application
+          </h1>
+          ${greeting}
+          ${jobInfo}
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            Thank you for taking the time to apply for the ${data.jobTitle} position and for your interest in joining our team. We truly appreciate the effort you put into your application.
+          </p>
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            After careful consideration, we have decided to move forward with candidates whose qualifications more closely align with our current needs for this specific role. This was a difficult decision, as we received many impressive applications.
+          </p>
+          
+          <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #854d0e; font-weight: 500;">
+              Don't be discouraged!
+            </p>
+            <p style="margin: 0; font-size: 13px; color: #854d0e; line-height: 1.5;">
+              This decision does not reflect on your abilities or potential. The job market is highly competitive, and the right opportunity for you is out there.
+            </p>
+          </div>
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We encourage you to:
+          </p>
+          
+          <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; color: #18181b; line-height: 1.8;">
+            <li>Keep an eye on our careers page for future opportunities that match your skills</li>
+            <li>Continue developing your expertise in your field</li>
+            <li>Apply again in the future – we'd love to hear from you</li>
+          </ul>
+          
+          ${data.customData?.additionalNotes ? `
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            ${data.customData.additionalNotes}
+          </p>
+          ` : ''}
+          
+          <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We wish you all the best in your career journey and future endeavors. Thank you again for considering us as a potential employer.
+          </p>
+          
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+            <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+              Warm regards,<br>
+              The Hiring Team
+            </p>
+          </div>
+        `;
+        break;
+
+      case 'offer':
+        subject = `Job Offer - ${data.jobTitle}`;
         
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We wanted to follow up regarding your application for the ${data.jobTitle} position.
-        </p>
+        const hasSalary = data.customData?.salaryAmount;
         
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          Your application is still under review, and we appreciate your patience during our selection process. We have received many applications and are carefully evaluating each candidate.
-        </p>
-        
-        ${data.customData?.additionalNotes ? `
-        <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          ${data.customData.additionalNotes}
-        </p>
-        ` : ''}
-        
-        <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-          We will be in touch with an update as soon as possible.
-        </p>
-        ${footer}
-      `;
-      break;
+        content = `
+          <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+            Congratulations! 🎉
+          </h1>
+          ${greeting}
+          ${jobInfo}
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We are pleased to offer you the <strong>${data.jobTitle}</strong> position! Your qualifications and experience impressed us throughout the interview process.
+          </p>
+          
+          ${hasSalary ? `
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: #166534; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+              Compensation Package
+            </p>
+            <p style="margin: 0; font-size: 24px; color: #15803d; font-weight: 600;">
+              ${salaryDisplay}
+            </p>
+            ${data.customData?.startDate ? `
+            <p style="margin: 12px 0 0 0; font-size: 13px; color: #166534;">
+              <strong>Proposed Start Date:</strong> ${data.customData.startDate}
+            </p>
+            ` : ''}
+          </div>
+          ` : `
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            Please expect to receive the formal offer letter with complete details about compensation, benefits, and start date shortly.
+          </p>
+          `}
+          
+          ${data.customData?.additionalNotes ? `
+          <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; font-weight: 500;">
+              Additional Information
+            </p>
+            <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+              ${data.customData.additionalNotes}
+            </p>
+          </div>
+          ` : ''}
+          
+          <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We look forward to welcoming you to our team!
+          </p>
+          ${footer}
+        `;
+        break;
+
+      case 'follow_up':
+        subject = `Following Up - ${data.jobTitle}`;
+        content = `
+          <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+            Application Status Update
+          </h1>
+          ${greeting}
+          ${jobInfo}
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We wanted to follow up regarding your application for the ${data.jobTitle} position.
+          </p>
+          
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            Your application is still under review, and we appreciate your patience during our selection process. We have received many applications and are carefully evaluating each candidate.
+          </p>
+          
+          ${data.customData?.additionalNotes ? `
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            ${data.customData.additionalNotes}
+          </p>
+          ` : ''}
+          
+          <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+            We will be in touch with an update as soon as possible.
+          </p>
+          ${footer}
+        `;
+        break;
+    }
   }
 
   await resend.emails.send({
@@ -631,48 +684,65 @@ interface ApplicationReviewedData {
 }
 
 export async function sendApplicationReviewedEmail(data: ApplicationReviewedData) {
-  const content = `
-    <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-      Application Update
-    </h1>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
-      Dear ${data.applicantName},
-    </p>
-    
-    <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
-      Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
-    </p>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      Thank you for your patience. We wanted to let you know that your application has been reviewed by our hiring team.
-    </p>
-    
-    <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-      <p style="margin: 0; font-size: 14px; color: #166534; font-weight: 500;">
-        ✓ Your application is now under active consideration
+  // Try to get template from database
+  const dbTemplate = await getEmailTemplateFromDb('APPLICATION_REVIEWED');
+  
+  let subject: string;
+  let content: string;
+
+  if (dbTemplate) {
+    const placeholderData = {
+      applicantName: data.applicantName,
+      jobTitle: data.jobTitle,
+      jobNumber: data.jobNumber,
+    };
+    subject = replacePlaceholders(dbTemplate.subject, placeholderData);
+    content = replacePlaceholders(dbTemplate.body, placeholderData);
+  } else {
+    subject = `Application Update - ${data.jobTitle}`;
+    content = `
+      <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+        Application Update
+      </h1>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+        Dear ${data.applicantName},
       </p>
-    </div>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      Our team is carefully evaluating all candidates, and we will be in touch with you regarding the next steps in our selection process.
-    </p>
-    
-    <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      We appreciate your interest in joining our team and thank you for your continued patience.
-    </p>
-    
-    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-      <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
-        If you have any questions, please don't hesitate to reach out.
+      
+      <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+        Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
       </p>
-    </div>
-  `;
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        Thank you for your patience. We wanted to let you know that your application has been reviewed by our hiring team.
+      </p>
+      
+      <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; font-size: 14px; color: #166534; font-weight: 500;">
+          ✓ Your application is now under active consideration
+        </p>
+      </div>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        Our team is carefully evaluating all candidates, and we will be in touch with you regarding the next steps in our selection process.
+      </p>
+      
+      <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        We appreciate your interest in joining our team and thank you for your continued patience.
+      </p>
+      
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+        <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+          If you have any questions, please don't hesitate to reach out.
+        </p>
+      </div>
+    `;
+  }
 
   await resend.emails.send({
     from: FROM,
     to: data.applicantEmail,
-    subject: `Application Update - ${data.jobTitle}`,
+    subject,
     html: emailTemplate(content),
   });
 }
@@ -685,63 +755,163 @@ interface ApplicationRejectionData {
   jobNumber: string;
 }
 
-export async function sendApplicationRejectionEmail(data: ApplicationRejectionData) {
+// Send user invitation email
+interface UserInvitationData {
+  email: string;
+  role: string;      // 'admin' or 'staff'
+  invitedBy: string; // Name of the admin who invited
+  token: string;
+}
+
+export async function sendUserInvitationEmail(data: UserInvitationData) {
+  const acceptUrl = `${APP_URL}/accept-invitation?token=${data.token}`;
+  
+  const roleDisplay = data.role === 'admin' ? 'Administrator' : 'Staff Member';
+  const roleColor = data.role === 'admin' ? '#dc2626' : '#2563eb';
+  const roleBgColor = data.role === 'admin' ? '#fef2f2' : '#eff6ff';
+
   const content = `
-    <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
-      Thank You for Your Application
-    </h1>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
-      Dear ${data.applicantName},
-    </p>
-    
-    <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
-      Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
-    </p>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      Thank you for taking the time to apply for the ${data.jobTitle} position and for your interest in joining our team. We truly appreciate the effort you put into your application.
-    </p>
-    
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      After careful consideration, we have decided to move forward with candidates whose qualifications more closely align with our current needs for this specific role. This was a difficult decision, as we received many impressive applications.
-    </p>
-    
-    <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-      <p style="margin: 0 0 8px 0; font-size: 14px; color: #854d0e; font-weight: 500;">
-        Don't be discouraged!
-      </p>
-      <p style="margin: 0; font-size: 13px; color: #854d0e; line-height: 1.5;">
-        This decision does not reflect on your abilities or potential. The job market is highly competitive, and the right opportunity for you is out there.
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background-color: ${roleBgColor}; border-radius: 50%; padding: 16px; margin-bottom: 16px;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${roleColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
+        You've Been Invited!
+      </h1>
+      <p style="margin: 0; font-size: 15px; color: #52525b;">
+        Join the ${FROM_NAME} team
       </p>
     </div>
     
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      We encourage you to:
+    <div style="background-color: #fafafa; border-radius: 8px; padding: 24px; margin-bottom: 24px; text-align: center;">
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">
+        You've been invited as
+      </p>
+      <div style="display: inline-block; background-color: ${roleBgColor}; color: ${roleColor}; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 6px;">
+        ${roleDisplay}
+      </div>
+      <p style="margin: 16px 0 0 0; font-size: 13px; color: #71717a;">
+        Invited by <strong style="color: #18181b;">${data.invitedBy}</strong>
+      </p>
+    </div>
+    
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #52525b; text-align: center; line-height: 1.6;">
+      Click the button below to set up your account. You'll be asked to provide your name and create a password.
     </p>
     
-    <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; color: #18181b; line-height: 1.8;">
-      <li>Keep an eye on our careers page for future opportunities that match your skills</li>
-      <li>Continue developing your expertise in your field</li>
-      <li>Apply again in the future – we'd love to hear from you</li>
-    </ul>
-    
-    <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
-      We wish you all the best in your career journey and future endeavors. Thank you again for considering us as a potential employer.
-    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td align="center">
+          <a href="${acceptUrl}" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 14px; font-weight: 500; text-decoration: none; padding: 12px 32px; border-radius: 8px;">
+            Accept Invitation
+          </a>
+        </td>
+      </tr>
+    </table>
     
     <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-      <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
-        Warm regards,<br>
-        The Hiring Team
+      <p style="margin: 0 0 12px 0; font-size: 13px; color: #71717a; text-align: center;">
+        Or use this link to accept:
+      </p>
+      <p style="margin: 0; text-align: center;">
+        <a href="${acceptUrl}" style="font-size: 13px; color: #3b82f6; text-decoration: underline; word-break: break-all;">
+          ${acceptUrl}
+        </a>
       </p>
     </div>
+    
+    <p style="margin: 24px 0 0 0; font-size: 13px; color: #71717a; text-align: center;">
+      This invitation expires in 7 days.
+    </p>
   `;
 
   await resend.emails.send({
     from: FROM,
+    to: data.email,
+    subject: `You've been invited to join ${FROM_NAME}`,
+    html: emailTemplate(content),
+  });
+}
+
+export async function sendApplicationRejectionEmail(data: ApplicationRejectionData) {
+  // Try to get template from database
+  const dbTemplate = await getEmailTemplateFromDb('APPLICATION_REJECTION');
+  
+  let subject: string;
+  let content: string;
+
+  if (dbTemplate) {
+    const placeholderData = {
+      applicantName: data.applicantName,
+      jobTitle: data.jobTitle,
+      jobNumber: data.jobNumber,
+    };
+    subject = replacePlaceholders(dbTemplate.subject, placeholderData);
+    content = replacePlaceholders(dbTemplate.body, placeholderData);
+  } else {
+    subject = `Thank You for Applying - ${data.jobTitle}`;
+    content = `
+      <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
+        Thank You for Your Application
+      </h1>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b;">
+        Dear ${data.applicantName},
+      </p>
+      
+      <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
+        Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
+      </p>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        Thank you for taking the time to apply for the ${data.jobTitle} position and for your interest in joining our team. We truly appreciate the effort you put into your application.
+      </p>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        After careful consideration, we have decided to move forward with candidates whose qualifications more closely align with our current needs for this specific role. This was a difficult decision, as we received many impressive applications.
+      </p>
+      
+      <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #854d0e; font-weight: 500;">
+          Don't be discouraged!
+        </p>
+        <p style="margin: 0; font-size: 13px; color: #854d0e; line-height: 1.5;">
+          This decision does not reflect on your abilities or potential. The job market is highly competitive, and the right opportunity for you is out there.
+        </p>
+      </div>
+      
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        We encourage you to:
+      </p>
+      
+      <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; color: #18181b; line-height: 1.8;">
+        <li>Keep an eye on our careers page for future opportunities that match your skills</li>
+        <li>Continue developing your expertise in your field</li>
+        <li>Apply again in the future – we'd love to hear from you</li>
+      </ul>
+      
+      <p style="margin: 0; font-size: 14px; color: #18181b; line-height: 1.6;">
+        We wish you all the best in your career journey and future endeavors. Thank you again for considering us as a potential employer.
+      </p>
+      
+      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+        <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
+          Warm regards,<br>
+          The Hiring Team
+        </p>
+      </div>
+    `;
+  }
+
+  await resend.emails.send({
+    from: FROM,
     to: data.applicantEmail,
-    subject: `Thank You for Applying - ${data.jobTitle}`,
+    subject,
     html: emailTemplate(content),
   });
 }

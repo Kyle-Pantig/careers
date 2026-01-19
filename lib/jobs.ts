@@ -137,9 +137,24 @@ export async function getJob(id: string): Promise<{ job: Job }> {
   return result;
 }
 
-// Get single job by job number
+// Get single job by job number (public - only published jobs)
 export async function getJobByNumber(jobNumber: string): Promise<{ job: Job }> {
   const res = await fetch(`${API_URL}/jobs/number/${jobNumber}`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to fetch job');
+  }
+
+  return result;
+}
+
+// Get single job by job number (admin - includes unpublished jobs)
+export async function getJobByNumberAdmin(jobNumber: string): Promise<{ job: Job }> {
+  const res = await fetch(`${API_URL}/jobs/admin/number/${jobNumber}`, {
     credentials: 'include',
   });
 

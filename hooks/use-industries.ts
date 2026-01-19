@@ -27,7 +27,7 @@ export function useIndustries() {
     queryKey: industryKeys.lists(),
     queryFn: async () => {
       const result = await getIndustries();
-      return result.industries;
+      return result.industries ?? [];
     },
   });
 }
@@ -38,7 +38,7 @@ export function useAdminIndustries() {
     queryKey: industryKeys.admin(),
     queryFn: async () => {
       const result = await getAdminIndustries();
-      return result.industries;
+      return result.industries ?? [];
     },
   });
 }

@@ -24,7 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useJobByNumber, useToggleJobPublish } from '@/hooks';
+import { useJobByNumberAdmin, useToggleJobPublish } from '@/hooks';
 import { WORK_TYPE_LABELS, JOB_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS, PERMISSIONS } from '@/shared/validators';
 import { Badge } from '@/components/ui/badge';
 import { AccessDenied } from '@/components/admin/access-denied';
@@ -37,14 +37,14 @@ export default function JobPreviewPage() {
 
   const jobNumber = params.jobNumber as string;
 
-  // React Query hooks
-  const { data: job, isLoading, isError } = useJobByNumber(jobNumber);
+  // React Query hooks - use admin version to see unpublished jobs
+  const { data: job, isLoading, isError } = useJobByNumberAdmin(jobNumber);
   const togglePublishMutation = useToggleJobPublish();
 
   useEffect(() => {
     if (job) {
       setBreadcrumbs([
-        { label: 'Admin', href: '/dashboard' },
+        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Jobs', href: '/dashboard/jobs' },
         { label: `Preview: ${job.jobNumber}` },
       ]);

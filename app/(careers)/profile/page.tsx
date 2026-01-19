@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/context';
-import { updateProfile, uploadResume, deleteResume, changePassword } from '@/lib/auth';
+import { updateProfile, uploadResume, deleteResume, changePassword, getLinkedAccounts, setPassword } from '@/lib/auth';
 import { MaxWidthLayout } from '@/components/careers';
 import { PDFViewer } from '@/components/ui/pdf-viewer';
 import { Button } from '@/components/ui/button';
@@ -80,8 +80,17 @@ const passwordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const setPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
+type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -89,6 +98,8 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState<boolean | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -129,6 +140,19 @@ export default function ProfilePage() {
     },
   });
 
+  const {
+    register: registerSetPassword,
+    handleSubmit: handleSetPasswordSubmit,
+    formState: { errors: setPasswordErrors },
+    reset: resetSetPassword,
+  } = useForm<SetPasswordFormData>({
+    resolver: zodResolver(setPasswordSchema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
+
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
@@ -147,6 +171,20 @@ export default function ProfilePage() {
       });
     }
   }, [user, reset]);
+
+  // Fetch linked accounts to check if user has credentials
+  useEffect(() => {
+    if (user) {
+      getLinkedAccounts()
+        .then((result) => {
+          setHasCredentials(result.hasCredentials);
+        })
+        .catch(() => {
+          // If it fails, assume they have credentials (fallback)
+          setHasCredentials(true);
+        });
+    }
+  }, [user]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsSubmitting(true);
@@ -190,6 +228,24 @@ export default function ProfilePage() {
       toast.error(error instanceof Error ? error.message : 'Failed to change password');
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const onSetPasswordSubmit = async (data: SetPasswordFormData) => {
+    setIsSettingPassword(true);
+    try {
+      const result = await setPassword(data.newPassword);
+      toast.success(result.message);
+      resetSetPassword();
+      // Update hasCredentials state
+      setHasCredentials(true);
+      // Reset password visibility
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to set password');
+    } finally {
+      setIsSettingPassword(false);
     }
   };
 
@@ -334,6 +390,72 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Profile Completion Progress - Only for non-admin/staff with incomplete profile */}
+        {!isAdminOrStaff && (() => {
+          const fields = [
+            { name: 'First Name', filled: !!user.firstName?.trim() },
+            { name: 'Last Name', filled: !!user.lastName?.trim() },
+            { name: 'Contact Number', filled: !!user.contactNumber?.trim() },
+            { name: 'Address', filled: !!user.address?.trim() },
+            { name: 'Resume', filled: !!user.resumeUrl },
+          ];
+          const filledCount = fields.filter(f => f.filled).length;
+          const percentage = Math.round((filledCount / fields.length) * 100);
+          const isComplete = percentage === 100;
+
+          if (isComplete) return null;
+
+          return (
+            <motion.div variants={fadeInUp} transition={{ duration: 0.5, delay: 0.15 }}>
+              <Card className="mb-6">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary">{percentage}%</span>
+                    </div>
+                    Complete Your Profile
+                  </CardTitle>
+                  <CardDescription>
+                    A complete profile helps employers learn more about you and increases your chances of getting hired.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Missing Fields */}
+                  <div className="flex flex-wrap gap-2">
+                    {fields.map((field) => (
+                      <div
+                        key={field.name}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          field.filled
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {field.filled ? (
+                          <CheckCircle2 className="h-3 w-3" />
+                        ) : (
+                          <div className="h-3 w-3 rounded-full border-2 border-current" />
+                        )}
+                        {field.name}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })()}
 
         {/* Edit Profile Form */}
         <motion.div variants={fadeInUp} transition={{ duration: 0.5, delay: 0.2 }}>
@@ -518,14 +640,14 @@ export default function ProfilePage() {
 
                     {/* Selected File Preview (pending upload) */}
                     {selectedFile && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-amber-50 border-amber-200">
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-amber-600" />
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">{selectedFile.name}</p>
-                            <p className="text-xs text-amber-600">
+                            <p className="text-xs text-muted-foreground">
                               {user.resumeUrl ? 'Will replace current resume' : 'Ready to upload'} • Click &quot;Save Changes&quot; to confirm
                             </p>
                           </div>
@@ -611,7 +733,7 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Security Section with Change Password */}
+        {/* Security Section with Change/Set Password */}
         <motion.div variants={fadeInUp} transition={{ duration: 0.5, delay: 0.3 }}>
           <Card>
             <CardHeader>
@@ -624,130 +746,239 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="change-password" className="border-none">
-                  <AccordionTrigger className="hover:no-underline py-3">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Lock className="h-4 w-4" />
-                      Change Password
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-4 pt-2">
-                      {/* Current Password */}
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPassword">Current Password</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="currentPassword"
-                            type={showCurrentPassword ? 'text' : 'password'}
-                            placeholder="Enter current password"
-                            className="pl-10 pr-10"
-                            autoComplete="current-password"
-                            {...registerPassword('currentPassword')}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showCurrentPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                        {passwordErrors.currentPassword && (
-                          <p className="text-sm text-destructive">{passwordErrors.currentPassword.message}</p>
-                        )}
+              {hasCredentials === null ? (
+                // Loading state
+                <div className="py-4">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : hasCredentials ? (
+                // User has password - show Change Password
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="change-password" className="border-none">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Lock className="h-4 w-4" />
+                        Change Password
                       </div>
-
-                      {/* New Password */}
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="newPassword"
-                            type={showNewPassword ? 'text' : 'password'}
-                            placeholder="Enter new password"
-                            className="pl-10 pr-10"
-                            autoComplete="new-password"
-                            {...registerPassword('newPassword')}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showNewPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-4 pt-2">
+                        {/* Current Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">Current Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="currentPassword"
+                              type={showCurrentPassword ? 'text' : 'password'}
+                              placeholder="Enter current password"
+                              className="pl-10 pr-10"
+                              autoComplete="current-password"
+                              {...registerPassword('currentPassword')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showCurrentPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          {passwordErrors.currentPassword && (
+                            <p className="text-sm text-destructive">{passwordErrors.currentPassword.message}</p>
+                          )}
                         </div>
-                        {passwordErrors.newPassword && (
-                          <p className="text-sm text-destructive">{passwordErrors.newPassword.message}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Password must be at least 8 characters.
+
+                        {/* New Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword">New Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="newPassword"
+                              type={showNewPassword ? 'text' : 'password'}
+                              placeholder="Enter new password"
+                              className="pl-10 pr-10"
+                              autoComplete="new-password"
+                              {...registerPassword('newPassword')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          {passwordErrors.newPassword && (
+                            <p className="text-sm text-destructive">{passwordErrors.newPassword.message}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Password must be at least 8 characters.
+                          </p>
+                        </div>
+
+                        {/* Confirm Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="confirmPassword"
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              placeholder="Confirm new password"
+                              className="pl-10 pr-10"
+                              autoComplete="new-password"
+                              {...registerPassword('confirmPassword')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          {passwordErrors.confirmPassword && (
+                            <p className="text-sm text-destructive">{passwordErrors.confirmPassword.message}</p>
+                          )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            type="submit"
+                            disabled={isChangingPassword}
+                            className="rounded-full"
+                          >
+                            {isChangingPassword ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Changing...
+                              </>
+                            ) : (
+                              'Change Password'
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              ) : (
+                // OAuth-only user - show Set Password
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="set-password" className="border-none">
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Lock className="h-4 w-4" />
+                        Set Password
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="mb-4 p-3 bg-muted rounded-md">
+                        <p className="text-sm text-muted-foreground">
+                          You signed up with Google. Set a password to also log in with your email and password.
                         </p>
                       </div>
-
-                      {/* Confirm Password */}
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="confirmPassword"
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            placeholder="Confirm new password"
-                            className="pl-10 pr-10"
-                            autoComplete="new-password"
-                            {...registerPassword('confirmPassword')}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                        {passwordErrors.confirmPassword && (
-                          <p className="text-sm text-destructive">{passwordErrors.confirmPassword.message}</p>
-                        )}
-                      </div>
-
-                      {/* Submit Button */}
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          type="submit"
-                          disabled={isChangingPassword}
-                          className="rounded-full"
-                        >
-                          {isChangingPassword ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Changing...
-                            </>
-                          ) : (
-                            'Change Password'
+                      <form onSubmit={handleSetPasswordSubmit(onSetPasswordSubmit)} className="space-y-4 pt-2">
+                        {/* New Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="setNewPassword">Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="setNewPassword"
+                              type={showNewPassword ? 'text' : 'password'}
+                              placeholder="Enter password"
+                              className="pl-10 pr-10"
+                              autoComplete="new-password"
+                              {...registerSetPassword('newPassword')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          {setPasswordErrors.newPassword && (
+                            <p className="text-sm text-destructive">{setPasswordErrors.newPassword.message}</p>
                           )}
-                        </Button>
-                      </div>
-                    </form>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                          <p className="text-xs text-muted-foreground">
+                            Password must be at least 8 characters.
+                          </p>
+                        </div>
+
+                        {/* Confirm Password */}
+                        <div className="space-y-2">
+                          <Label htmlFor="setConfirmPassword">Confirm Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="setConfirmPassword"
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              placeholder="Confirm password"
+                              className="pl-10 pr-10"
+                              autoComplete="new-password"
+                              {...registerSetPassword('confirmPassword')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          {setPasswordErrors.confirmPassword && (
+                            <p className="text-sm text-destructive">{setPasswordErrors.confirmPassword.message}</p>
+                          )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            type="submit"
+                            disabled={isSettingPassword}
+                            className="rounded-full"
+                          >
+                            {isSettingPassword ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Setting...
+                              </>
+                            ) : (
+                              'Set Password'
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
             </CardContent>
           </Card>
         </motion.div>

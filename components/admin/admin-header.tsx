@@ -20,7 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, LogOut, Settings, User } from "lucide-react"
+import Link from 'next/link';
+import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 import { useAuth, useBreadcrumbs } from "@/context"
 import { toast } from 'sonner'
 
@@ -46,7 +47,7 @@ export function AdminHeader() {
   const fullName = user ? `${user.firstName} ${user.lastName}` : 'User';
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
+    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
         <Separator orientation="vertical" className="mr-2 h-4" />
@@ -91,13 +92,11 @@ export function AdminHeader() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/settings/account">
+              <UserCircle className="mr-2 h-4 w-4" />
+              Account Center
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 

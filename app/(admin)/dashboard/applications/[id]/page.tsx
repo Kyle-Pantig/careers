@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBreadcrumbs, useAuth } from '@/context';
-import { getApplication, updateApplicationStatus, type Application } from '@/lib/applications';
+import { getAdminApplication, updateApplicationStatus, type Application } from '@/lib/applications';
 import { PERMISSIONS } from '@/shared/validators/permissions';
 import { AccessDenied } from '@/components/admin/access-denied';
 import { Button } from '@/components/ui/button';
@@ -64,8 +64,8 @@ export default function ApplicationDetailPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['applications', applicationId],
-    queryFn: () => getApplication(applicationId),
+    queryKey: ['applications', 'admin', applicationId],
+    queryFn: () => getAdminApplication(applicationId),
     enabled: !!applicationId,
   });
 
@@ -157,7 +157,10 @@ export default function ApplicationDetailPage() {
             </p>
           </div>
         </div>
-        <Badge variant={STATUS_CONFIG[application.status]?.variant || 'secondary'} className="gap-1 text-sm">
+        <Badge 
+          variant={STATUS_CONFIG[application.status]?.variant || 'secondary'} 
+          className={`gap-1 text-sm ${application.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
+        >
           {STATUS_CONFIG[application.status]?.icon}
           {STATUS_CONFIG[application.status]?.label || application.status}
         </Badge>
@@ -226,24 +229,10 @@ export default function ApplicationDetailPage() {
                     <p className="text-sm text-muted-foreground">PDF Document</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPdfViewerOpen(true)}>
-                    <Maximize2 className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={application.resumeUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={application.resumeUrl} download>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </a>
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={() => setPdfViewerOpen(true)}>
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  View
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -287,8 +276,8 @@ export default function ApplicationDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Update Status - Only for users with edit permission */}
-          {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
+          {/* Update Status - Only for users with edit permission and not hired/rejected */}
+          {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && application.status !== 'hired' && application.status !== 'rejected' && (
             <Card>
               <CardHeader>
                 <CardTitle>Update Status</CardTitle>
@@ -374,6 +363,7 @@ export default function ApplicationDetailPage() {
             jobSalaryMax={application.job?.salaryMax}
             jobSalaryPeriod={application.job?.salaryPeriod}
             jobSalaryCurrency={application.job?.salaryCurrency}
+            applicationStatus={application.status}
           />
 
           {/* Application Info */}
@@ -390,7 +380,7 @@ export default function ApplicationDetailPage() {
               {application.userId && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Account</span>
-                  <Badge variant="outline">Registered User</Badge>
+                  <Badge variant="outline">Verified</Badge>
                 </div>
               )}
             </CardContent>

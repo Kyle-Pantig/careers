@@ -10,6 +10,8 @@ import {
   useUpdateUserRole,
   useToggleUserActive,
   useUpdateUserPermissionLevel,
+  useDeleteUser,
+  useResendInvitation,
 } from '@/hooks';
 import { type User } from '@/lib/users';
 import {
@@ -51,20 +53,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search,
   MoreHorizontal,
   Shield,
   UserCheck,
   UserX,
-  Users,
   ShieldCheck,
-  UserCog,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -73,7 +82,12 @@ import {
   Pencil,
   Check,
   Globe,
+  UserPlus,
+  Trash2,
+  AlertTriangle,
+  Mail,
 } from 'lucide-react';
+import { InviteUserDialog } from '@/components/admin/invite-user-dialog';
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
@@ -101,12 +115,13 @@ const PERMISSION_LEVEL_BADGES: Record<string, { label: string; color: string; ic
 };
 
 export default function UsersPage() {
-  const { user: currentUser, hasPermission, isLoading: authLoading, isAdmin } = useAuth();
+  const { user: currentUser, hasPermission, isLoading: authLoading, isAdmin, isSuperAdmin } = useAuth();
   
   // Filter states
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [userType, setUserType] = useState<'candidates' | 'staff'>('candidates');
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -115,12 +130,15 @@ export default function UsersPage() {
     page,
     limit,
     search: debouncedSearch || undefined,
-    role: roleFilter || undefined,
+    role: userType === 'staff' && roleFilter ? roleFilter : undefined,
+    userType,
   });
   const { data: roles = [] } = useRoles();
   const updateRoleMutation = useUpdateUserRole();
   const toggleActiveMutation = useToggleUserActive();
   const updatePermissionMutation = useUpdateUserPermissionLevel();
+  const deleteUserMutation = useDeleteUser();
+  const resendInvitationMutation = useResendInvitation();
 
   const users = usersData?.users || [];
   const pagination = usersData?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
@@ -135,6 +153,13 @@ export default function UsersPage() {
   const [editPermissionOpen, setEditPermissionOpen] = useState(false);
   const [selectedPermissionLevel, setSelectedPermissionLevel] = useState<string>('');
 
+  // Delete user dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  // Invite user dialog
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -147,7 +172,7 @@ export default function UsersPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [roleFilter]);
+  }, [roleFilter, userType]);
 
   // === PERMISSION HELPER FUNCTIONS ===
 
@@ -175,6 +200,32 @@ export default function UsersPage() {
     if (!isAdmin) return false;
     if (isSelf(targetUser)) return false;
     return true;
+  };
+
+  // Can current user delete this user? (ADMIN ONLY, Super admin required for deleting admins)
+  const canDelete = (targetUser: User): boolean => {
+    if (!isAdmin) return false;
+    if (isSelf(targetUser)) return false;
+    
+    // Check if target user is an admin
+    const isTargetAdmin = targetUser.roles.some((r) => r.role.name === 'admin');
+    
+    // Only super admin can delete other admins
+    if (isTargetAdmin && !isSuperAdmin) return false;
+    
+    return true;
+  };
+
+  // Check if user has pending invitation (hasn't accepted yet)
+  const isPendingInvitation = (targetUser: User): boolean => {
+    // User hasn't set up their account if they have no firstName/lastName
+    return !targetUser.firstName && !targetUser.lastName;
+  };
+
+  // Can current user resend invitation? (ADMIN ONLY, user must be pending)
+  const canResendInvitation = (targetUser: User): boolean => {
+    if (!isAdmin) return false;
+    return isPendingInvitation(targetUser);
   };
 
   // Handle role update
@@ -205,6 +256,36 @@ export default function UsersPage() {
       toast.success(result.message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to toggle user status');
+    }
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      const result = await deleteUserMutation.mutateAsync(userToDelete.id);
+      toast.success(result.message);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    }
+  };
+
+  // Handle resend invitation
+  const handleResendInvitation = async (user: User) => {
+    try {
+      const result = await resendInvitationMutation.mutateAsync(user.id);
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to resend invitation');
     }
   };
 
@@ -289,59 +370,35 @@ export default function UsersPage() {
     return <AccessDenied />;
   }
 
-  // Stats
-  const totalUsers = pagination.total;
-  const activeUsers = users.filter((u) => u.isActive).length;
-  const adminCount = users.filter((u) => u.roles.some((r) => r.role.name === 'admin')).length;
-  const staffCount = users.filter((u) => u.roles.some((r) => r.role.name === 'staff')).length;
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Users Management</h1>
-        <p className="text-muted-foreground">Manage users, roles, and access levels</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Users Management</h1>
+          <p className="text-muted-foreground">Manage users, roles, and access levels</p>
+        </div>
+        {isAdmin && (
+          <Button onClick={() => setInviteDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
+        )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{adminCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Staff</CardTitle>
-            <UserCog className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{staffCount}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* User Type Tabs */}
+      <Tabs value={userType} onValueChange={(value) => setUserType(value as 'candidates' | 'staff')}>
+        <TabsList>
+          <TabsTrigger value="candidates" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Candidates
+          </TabsTrigger>
+          <TabsTrigger value="staff" className="gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Admin & Staff
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -354,19 +411,18 @@ export default function UsersPage() {
             className="pl-9"
           />
         </div>
-        <Select value={roleFilter || 'all'} onValueChange={(val) => setRoleFilter(val === 'all' ? '' : val)}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            {roles.map((role) => (
-              <SelectItem key={role.id} value={role.name}>
-                {ROLE_LABELS[role.name] || role.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {userType === 'staff' && (
+          <Select value={roleFilter || 'all'} onValueChange={(val) => setRoleFilter(val === 'all' ? '' : val)}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="staff">Staff</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Users Table */}
@@ -414,16 +470,24 @@ export default function UsersPage() {
                 const canModifyRole = canChangeRole(user);
                 const canModifyPermission = canChangePermissionLevel(user);
                 const canModifyStatus = canToggleActive(user);
-                const hasAnyAction = canModifyRole || canModifyPermission || canModifyStatus;
+                const canDeleteUser = canDelete(user);
+                const canResend = canResendInvitation(user);
+                const hasAnyAction = canModifyRole || canModifyPermission || canModifyStatus || canDeleteUser || canResend;
 
                 return (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {user.firstName} {user.lastName}
-                          {isSelf(user) && (
-                            <span className="ml-2 text-xs text-muted-foreground">(You)</span>
+                          {isPendingInvitation(user) ? (
+                            <span className="text-muted-foreground italic">Invitation Pending</span>
+                          ) : (
+                            <>
+                              {user.firstName} {user.lastName}
+                              {isSelf(user) && (
+                                <span className="ml-2 text-xs text-muted-foreground">(You)</span>
+                              )}
+                            </>
                           )}
                         </p>
                         <p className="text-sm text-muted-foreground truncate max-w-[200px]">
@@ -446,9 +510,15 @@ export default function UsersPage() {
                       {getPermissionBadge(user)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      {isPendingInvitation(user) ? (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                          Pending
+                        </Badge>
+                      ) : (
+                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge variant={user.emailVerified ? 'default' : 'outline'}>
@@ -473,6 +543,18 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {canResend && (
+                                <DropdownMenuItem
+                                  onClick={() => handleResendInvitation(user)}
+                                  disabled={resendInvitationMutation.isPending}
+                                >
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Resend Invitation
+                                </DropdownMenuItem>
+                              )}
+                              {canResend && (canModifyRole || canModifyPermission || canModifyStatus) && (
+                                <DropdownMenuSeparator />
+                              )}
                               {canModifyRole && (
                                 <DropdownMenuItem onClick={() => openEditRole(user)}>
                                   <Shield className="mr-2 h-4 w-4" />
@@ -488,7 +570,7 @@ export default function UsersPage() {
                               {(canModifyRole || canModifyPermission) && canModifyStatus && (
                                 <DropdownMenuSeparator />
                               )}
-                              {canModifyStatus && (
+                              {canModifyStatus && !canResend && (
                                 <DropdownMenuItem onClick={() => handleToggleActive(user)}>
                                   {user.isActive ? (
                                     <>
@@ -502,6 +584,18 @@ export default function UsersPage() {
                                     </>
                                   )}
                                 </DropdownMenuItem>
+                              )}
+                              {canDeleteUser && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => openDeleteDialog(user)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete User
+                                  </DropdownMenuItem>
+                                </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -783,6 +877,77 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        // Prevent closing while deletion is in progress
+        if (!deleteUserMutation.isPending) {
+          setDeleteDialogOpen(open);
+          if (!open) setUserToDelete(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete User
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">
+                {userToDelete?.firstName} {userToDelete?.lastName}
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete the user account and all associated data including:
+              </p>
+              <ul className="mt-2 text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>User profile and settings</li>
+                <li>Role and permission assignments</li>
+                <li>Linked accounts (Google, credentials)</li>
+                <li>Email verification tokens</li>
+              </ul>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setUserToDelete(null);
+              }}
+              disabled={deleteUserMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete User
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+      />
     </div>
   );
 }

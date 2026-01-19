@@ -55,6 +55,7 @@ export default function JobsPage() {
   const [workTypeFilter, setWorkTypeFilter] = useState<string>('all');
   const [publishedFilter, setPublishedFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const [togglingJobId, setTogglingJobId] = useState<string | null>(null);
   const limit = 10;
 
   // React Query hooks
@@ -74,7 +75,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: 'Admin', href: '/dashboard' },
+      { label: 'Dashboard', href: '/dashboard' },
       { label: 'Jobs' },
     ]);
   }, [setBreadcrumbs]);
@@ -97,11 +98,14 @@ export default function JobsPage() {
   };
 
   const handleTogglePublish = async (id: string) => {
+    setTogglingJobId(id);
     try {
       await togglePublishMutation.mutateAsync(id);
       toast.success('Job status updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to toggle publish status');
+    } finally {
+      setTogglingJobId(null);
     }
   };
 
@@ -263,8 +267,12 @@ export default function JobsPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={togglingJobId === job.id}>
+                              {togglingJobId === job.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">

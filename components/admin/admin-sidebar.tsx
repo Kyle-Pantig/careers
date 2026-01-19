@@ -11,9 +11,11 @@ import {
   Plus,
   FolderOpen,
   Mail,
-  Sliders,
-  GalleryVerticalEnd
+  GalleryVerticalEnd,
+  UserCircle,
 } from "lucide-react"
+import { usePendingApplicationsCount } from "@/hooks"
+import { Badge } from "@/components/ui/badge"
 
 import {
   Sidebar,
@@ -82,14 +84,14 @@ const navigation = [
     title: "Settings",
     items: [
       {
-        title: "General",
-        url: "/dashboard/settings",
-        icon: Sliders,
-      },
-      {
-        title: "Email",
+        title: "Email Templates",
         url: "/dashboard/settings/email",
         icon: Mail,
+      },
+      {
+        title: "Account Center",
+        url: "/dashboard/settings/account",
+        icon: UserCircle,
       },
     ],
   },
@@ -97,6 +99,8 @@ const navigation = [
 
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const { data: pendingData } = usePendingApplicationsCount()
+  const pendingCount = pendingData?.count || 0
 
   return (
     <Sidebar {...props}>
@@ -125,9 +129,19 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
               {group.items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
+                    <Link href={item.url} className="flex items-center justify-between w-full">
+                      <span className="flex items-center gap-2">
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </span>
+                      {item.url === '/dashboard/applications' && pendingCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="h-5 min-w-5 px-1.5 text-xs font-medium"
+                        >
+                          {pendingCount > 99 ? '99+' : pendingCount}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

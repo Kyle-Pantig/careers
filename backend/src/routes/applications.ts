@@ -168,6 +168,12 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
                 salaryMax: true,
                 salaryPeriod: true,
                 salaryCurrency: true,
+                industry: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -307,7 +313,59 @@ prisma.jobApplication.findMany({
     }
   )
 
-  // Get single application (users can view their own, staff/admin can view all)
+  // Get single application for admin/staff
+  .get(
+    '/admin/:id',
+    async ({ params, set }) => {
+      const application = await prisma.jobApplication.findUnique({
+        where: { id: params.id },
+        include: {
+          job: {
+            select: {
+              id: true,
+              title: true,
+              jobNumber: true,
+              location: true,
+              workType: true,
+              jobType: true,
+              salaryMin: true,
+              salaryMax: true,
+              salaryPeriod: true,
+              salaryCurrency: true,
+              industry: {
+                select: {
+                  name: true,
+                },
+              },
+            } as Record<string, unknown>,
+          },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!application) {
+        set.status = 404;
+        return { error: 'Application not found' };
+      }
+
+      return { application };
+    },
+    {
+      hasPermission: PERMISSIONS.APPLICATIONS_VIEW,
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  // Get single application (users can view their own)
   .get(
     '/:id',
     async ({ params, set, user }) => {

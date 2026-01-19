@@ -14,6 +14,14 @@ export interface User {
   roles: string[];
   // Simplified permission level: 'canEdit' (full access) or 'canRead' (view only)
   permissionLevel?: string | null;
+  // Whether this user is the super admin (primary admin from env)
+  isSuperAdmin?: boolean;
+}
+
+export interface LinkedAccount {
+  id: string;
+  provider: 'CREDENTIALS' | 'GOOGLE';
+  linkedAt: string;
 }
 
 export interface AuthResponse {
@@ -287,6 +295,121 @@ export async function changePassword(data: ChangePasswordData): Promise<{ messag
   
   if (!res.ok) {
     throw new Error(result.error || 'Failed to change password');
+  }
+
+  return result;
+}
+
+// Set password for OAuth-only users (no existing password)
+export async function setPassword(password: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_URL}/auth/me/set-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ password }),
+  });
+
+  const result = await res.json();
+  
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to set password');
+  }
+
+  return result;
+}
+
+// ============================================
+// Google OAuth Functions
+// ============================================
+
+// Response types for Google authentication
+export interface GoogleAuthResponse {
+  user: User;
+  isNewUser?: boolean;
+}
+
+export interface GoogleAuthLinkRequired {
+  error: string;
+  requiresLink: true;
+  linkToken: string;
+  provider: string;
+  providerName: string;
+  email: string;
+  googleId: string;
+}
+
+// Authenticate with Google access token (from Google Sign-In)
+export async function googleAuth(credential: string): Promise<GoogleAuthResponse | GoogleAuthLinkRequired> {
+  const res = await fetch(`${API_URL}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ credential }),
+  });
+
+  const result = await res.json();
+  
+  // 409 means account exists and requires linking
+  if (res.status === 409 && result.requiresLink) {
+    return result as GoogleAuthLinkRequired;
+  }
+  
+  if (!res.ok) {
+    throw new Error(result.error || 'Google authentication failed');
+  }
+
+  return result as GoogleAuthResponse;
+}
+
+// Confirm account linking (verify password before linking Google)
+export async function confirmAccountLink(token: string, password: string): Promise<{ message: string; needsGoogleAuth: boolean; email: string }> {
+  const res = await fetch(`${API_URL}/auth/link-account/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ token, password }),
+  });
+
+  const result = await res.json();
+  
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to verify password');
+  }
+
+  return result;
+}
+
+// Complete account linking with Google info
+export async function completeAccountLink(data: {
+  email: string;
+  googleId: string;
+}): Promise<{ message: string; user: User }> {
+  const res = await fetch(`${API_URL}/auth/link-account/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  const result = await res.json();
+  
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to link account');
+  }
+
+  return result;
+}
+
+// Get linked accounts for current user
+export async function getLinkedAccounts(): Promise<{ accounts: LinkedAccount[]; hasCredentials: boolean }> {
+  const res = await fetch(`${API_URL}/auth/me/accounts`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+  
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to get linked accounts');
   }
 
   return result;

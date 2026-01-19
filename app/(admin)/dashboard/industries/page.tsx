@@ -60,7 +60,8 @@ export default function IndustriesPage() {
   const [editingIndustry, setEditingIndustry] = useState<Industry | null>(null);
 
   // React Query hooks
-  const { data: industries = [], isLoading } = useAdminIndustries();
+  const { data: industriesData, isLoading } = useAdminIndustries();
+  const industries = Array.isArray(industriesData) ? industriesData : [];
   const createMutation = useCreateIndustry();
   const updateMutation = useUpdateIndustry();
   const deleteMutation = useDeleteIndustry();
@@ -88,7 +89,7 @@ export default function IndustriesPage() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: 'Admin', href: '/dashboard' },
+      { label: 'Dashboard', href: '/dashboard' },
       { label: 'Industries' },
     ]);
   }, [setBreadcrumbs]);

@@ -59,6 +59,8 @@ interface EmailComposeDialogProps {
   jobSalaryMax?: number | null;
   jobSalaryPeriod?: string | null;
   jobSalaryCurrency?: string | null;
+  // Application status - when hired, only allow compose
+  applicationStatus?: string;
 }
 
 const EMAIL_TEMPLATES: { 
@@ -110,9 +112,11 @@ export function EmailComposeDialog({
   jobSalaryMax,
   jobSalaryPeriod,
   jobSalaryCurrency,
+  applicationStatus,
 }: EmailComposeDialogProps) {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'compose' | 'template'>('template');
+  const isHired = applicationStatus === 'hired';
+  const [activeTab, setActiveTab] = useState<'compose' | 'template'>(isHired ? 'compose' : 'template');
   
   // Custom email state
   const [subject, setSubject] = useState('');
@@ -185,7 +189,7 @@ export function EmailComposeDialog({
       setTemplateData({});
       setInterviewDateTime(undefined);
       setStartDate(undefined);
-      setActiveTab('template');
+      setActiveTab(isHired ? 'compose' : 'template');
     }, 300);
   };
 
@@ -224,16 +228,22 @@ export function EmailComposeDialog({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'compose' | 'template')} className="flex flex-col flex-1 min-h-0">
           {/* Fixed Tabs */}
           <div className="px-6 pt-4 flex-shrink-0">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="template" className="gap-2">
-                <FileText className="h-4 w-4" />
-                Use Template
-              </TabsTrigger>
-              <TabsTrigger value="compose" className="gap-2">
-                <Mail className="h-4 w-4" />
-                Compose
-              </TabsTrigger>
-            </TabsList>
+            {isHired ? (
+              <div className="text-sm text-muted-foreground mb-2">
+                Templates are disabled for hired candidates. You can send a custom email.
+              </div>
+            ) : (
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="template" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Use Template
+                </TabsTrigger>
+                <TabsTrigger value="compose" className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  Compose
+                </TabsTrigger>
+              </TabsList>
+            )}
           </div>
           
           {/* Scrollable Content */}

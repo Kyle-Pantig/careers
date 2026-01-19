@@ -16,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   isStaff: boolean;
+  isSuperAdmin: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasPermission: (permission: Permission) => boolean;
@@ -48,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await logoutApi();
     // Clear all React Query cache to ensure fresh data for next user
     queryClient.clear();
+    // Clear profile completion dismissed flag so it shows for next user
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('profile_completion_dismissed');
+    }
     setUser(null);
   };
 
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.roles.includes('admin') ?? false;
   const isStaff = user?.roles.includes('staff') ?? false;
+  const isSuperAdmin = user?.isSuperAdmin ?? false;
 
   // Get the user's permission level
   const permissionLevel = user?.permissionLevel ?? null;
@@ -96,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading, 
         isAdmin, 
         isStaff, 
+        isSuperAdmin,
         logout, 
         refreshUser,
         hasPermission,
