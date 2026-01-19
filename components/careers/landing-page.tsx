@@ -50,7 +50,9 @@ export function LandingHero() {
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
-      <div className="absolute inset-0 bg-[url('/placeholder.svg')] opacity-5" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+      {/* Faded corners overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(24,24,27,0.8)_70%,rgba(24,24,27,1)_100%)]" />
       <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
         <motion.div 
           className="mx-auto max-w-2xl text-center"

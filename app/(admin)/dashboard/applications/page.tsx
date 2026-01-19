@@ -238,11 +238,11 @@ export default function ApplicationsPage() {
           <p className="text-muted-foreground">Manage job applications organized by industry</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center border rounded-lg p-1">
+          <div className="flex items-center border rounded-md h-8 p-0.5">
             <Button
               variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-8 px-3"
+              className="h-7 px-2.5 rounded-sm"
               onClick={() => setViewMode('cards')}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -250,7 +250,7 @@ export default function ApplicationsPage() {
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-8 px-3"
+              className="h-7 px-2.5 rounded-sm"
               onClick={() => setViewMode('table')}
             >
               <List className="h-4 w-4" />

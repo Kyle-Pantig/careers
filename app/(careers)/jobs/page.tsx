@@ -278,6 +278,8 @@ export default function JobsPage() {
       {/* Hero Section - Full Width */}
       <div className="relative bg-gradient-to-br from-primary/5 via-primary/10 to-background border-b">
         <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+        {/* Faded corners overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,hsl(var(--background)/0.8)_70%,hsl(var(--background))_100%)]" />
         <MaxWidthLayout className="py-16 md:py-24 relative">
           <motion.div 
             className="max-w-3xl"
@@ -370,7 +372,7 @@ export default function JobsPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={locationOpen}
-                className="w-full sm:w-[200px] justify-between font-normal"
+                className="w-full sm:w-[200px] justify-between font-normal bg-transparent"
               >
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />

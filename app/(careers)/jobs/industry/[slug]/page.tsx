@@ -289,15 +289,6 @@ export default function IndustryJobsPage() {
               {industry?.name || 'Industry'}
             </h1>
           </motion.div>
-          {industry?.description && (
-            <motion.p 
-              className="text-muted-foreground mt-4"
-              variants={fadeInUp}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              {industry.description}
-            </motion.p>
-          )}
         </motion.div>
       )}
 
@@ -340,7 +331,7 @@ export default function IndustryJobsPage() {
                   variant="outline"
                   role="combobox"
                   aria-expanded={locationOpen}
-                  className="w-full sm:w-[220px] justify-between font-normal"
+                  className="w-full sm:w-[220px] justify-between font-normal bg-transparent"
                 >
                   <div className="flex items-center">
                     <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
