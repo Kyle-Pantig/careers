@@ -22,7 +22,7 @@ COPY . .
 
 # Generate Prisma Client
 # Generate Prisma Client
-RUN ls -R
+
 RUN bunx prisma generate --schema=./prisma/schema.prisma
 
 # [Optional] Run tests here if you have them
