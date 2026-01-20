@@ -191,13 +191,13 @@ export default function ProfilePage() {
     try {
       // First update profile data
       const result = await updateProfile(data);
-      
+
       // Then upload resume if a new file is selected
       if (selectedFile) {
         await uploadResume(selectedFile);
         setSelectedFile(null);
       }
-      
+
       toast.success(result.message);
       // Refresh user data in context
       if (refreshUser) {
@@ -303,7 +303,7 @@ export default function ProfilePage() {
 
   const handleResumeDelete = async () => {
     if (!user?.resumeUrl) return;
-    
+
     setIsDeletingResume(true);
     try {
       const result = await deleteResume();
@@ -370,21 +370,14 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium">{user.firstName} {user.lastName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium">{user.firstName} {user.lastName}</p>
+                      {user.emailVerified && (
+                        <CheckCircle2 className="h-4 w-4 fill-blue-500 text-white" />
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {user.emailVerified ? (
-                    <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">
-                      Not Verified
-                    </Badge>
-                  )}
                 </div>
               </div>
             </CardContent>
@@ -424,7 +417,7 @@ export default function ProfilePage() {
                   {/* Progress Bar */}
                   <div className="space-y-2">
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-primary transition-all duration-500"
                         style={{ width: `${percentage}%` }}
                       />
@@ -436,11 +429,10 @@ export default function ProfilePage() {
                     {fields.map((field) => (
                       <div
                         key={field.name}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          field.filled
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${field.filled
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                          }`}
                       >
                         {field.filled ? (
                           <CheckCircle2 className="h-3 w-3" />
@@ -579,7 +571,7 @@ export default function ProfilePage() {
                       className="hidden"
                       id="resume-upload"
                     />
-                    
+
                     {/* Current Resume (if exists and no new file selected) */}
                     {user.resumeUrl && !selectedFile && (
                       <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
@@ -590,12 +582,12 @@ export default function ProfilePage() {
                           <div>
                             <p className="font-medium text-sm">{user.resumeFileName || 'Resume.pdf'}</p>
                             <p className="text-xs text-muted-foreground">
-                              Uploaded {user.resumeUploadedAt 
-                                ? new Date(user.resumeUploadedAt).toLocaleDateString('en-US', { 
-                                    year: 'numeric', 
-                                    month: 'short', 
-                                    day: 'numeric' 
-                                  })
+                              Uploaded {user.resumeUploadedAt
+                                ? new Date(user.resumeUploadedAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })
                                 : 'N/A'
                               }
                             </p>
@@ -626,7 +618,7 @@ export default function ProfilePage() {
                               <RefreshCw className="h-4 w-4 mr-2" />
                               Replace
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={handleResumeDelete}
                               className="text-destructive focus:text-destructive"
                             >
@@ -663,7 +655,7 @@ export default function ProfilePage() {
                         </Button>
                       </div>
                     )}
-                    
+
                     {/* Drag & Drop Zone (only when no resume uploaded and no file selected) */}
                     {!user.resumeUrl && !selectedFile && (
                       <div
@@ -673,8 +665,8 @@ export default function ProfilePage() {
                         onClick={() => fileInputRef.current?.click()}
                         className={`
                           border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-                          ${isDragging 
-                            ? 'border-primary bg-primary/5' 
+                          ${isDragging
+                            ? 'border-primary bg-primary/5'
                             : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
                           }
                         `}

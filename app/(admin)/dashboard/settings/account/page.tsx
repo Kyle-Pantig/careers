@@ -228,25 +228,14 @@ export default function AccountCenterPage() {
                 </span>
               </div>
               <div>
-                <p className="font-medium text-lg">{user.firstName} {user.lastName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium text-lg">{user.firstName} {user.lastName}</p>
+                  {user.emailVerified && (
+                    <CheckCircle2 className="h-4 w-4 fill-blue-500 text-white" />
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Shield className="h-3 w-3" />
-                {userRole}
-              </Badge>
-              {user.emailVerified ? (
-                <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Verified
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">
-                  Not Verified
-                </Badge>
-              )}
             </div>
           </div>
         </CardContent>

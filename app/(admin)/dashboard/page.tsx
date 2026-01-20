@@ -837,7 +837,7 @@ export default function DashboardPage() {
           <CardContent>
             <ScrollArea className="h-[280px]">
               {recentApplications.length > 0 ? (
-                <div className="space-y-3 pr-4">
+                <div className="space-y-2">
                   {recentApplications.map((app) => {
                     const statusConfig = STATUS_CONFIG[app.status] || STATUS_CONFIG.pending;
                     return (
@@ -929,7 +929,7 @@ export default function DashboardPage() {
             <CardTitle className="text-lg">Quick Stats</CardTitle>
             <CardDescription>Platform overview</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 overflow-x-auto">
+          <CardContent className="space-y-2 overflow-x-auto">
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -1003,39 +1003,41 @@ export default function DashboardPage() {
           <CardContent>
             <ScrollArea className="h-[280px]">
               {recentJobs.length > 0 ? (
-                <div className="space-y-4 pr-4">
+                <div className="space-y-2">
                   {recentJobs.map((job) => (
                     <div
                       key={job.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors gap-3"
                     >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{job.title}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium truncate max-w-[180px] sm:max-w-[250px]">{job.title}</p>
                           {job.isPublished ? (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs shrink-0">
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px] h-5 shrink-0">
                               Published
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs shrink-0">
+                            <Badge variant="secondary" className="text-[10px] h-5 shrink-0">
                               Draft
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
                           <span className="truncate">{job.industry}</span>
                           <span>•</span>
                           <span className="truncate">{job.location}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 shrink-0 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-4 w-4" />
-                          <span>{job.applicationsCount}</span>
+                      <div className="flex items-center gap-4 shrink-0 text-xs text-muted-foreground border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <div className="flex items-center gap-1.5" title="Applications">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span className="font-medium">{job.applicationsCount}</span>
+                          <span className="sm:hidden text-[10px]">applications</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" />
-                          <span>{job.viewsCount}</span>
+                        <div className="flex items-center gap-1.5" title="Views">
+                          <Eye className="h-3.5 w-3.5" />
+                          <span className="font-medium">{job.viewsCount}</span>
+                          <span className="sm:hidden text-[10px]">views</span>
                         </div>
                       </div>
                     </div>
