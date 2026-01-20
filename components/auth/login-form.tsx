@@ -19,11 +19,11 @@ import { login, requestMagicLink, CooldownError, googleAuth, GoogleAuthLinkRequi
 import { useAuth } from '@/context';
 import { Loader2, Mail, KeyRound, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { 
-  loginSchema, 
-  magicLinkSchema, 
-  type LoginFormData, 
-  type MagicLinkFormData 
+import {
+  loginSchema,
+  magicLinkSchema,
+  type LoginFormData,
+  type MagicLinkFormData
 } from '@/shared/validators';
 import { useGoogleLogin } from '@react-oauth/google';
 
@@ -51,7 +51,7 @@ export function LoginForm({
   // Cooldown timer
   useEffect(() => {
     if (cooldown <= 0) return;
-    
+
     const timer = setInterval(() => {
       setCooldown((prev) => prev - 1);
     }, 1000);
@@ -64,22 +64,33 @@ export function LoginForm({
 
     try {
       const result = await login(data);
-      
+
       // Refresh auth context
       await refreshUser();
-      
+
       toast.success('Welcome back!');
-      
+
       // Get redirect URL at submission time (not render time)
       const redirectUrl = searchParams.get('redirect');
-      
+
       // Redirect to the specified URL or default based on role
       if (redirectUrl) {
         router.push(redirectUrl);
-      } else if (result.user.roles.includes('admin') || result.user.roles.includes('staff')) {
-        router.push('/dashboard');
       } else {
-        router.push('/');
+        // Robust role check handling both string[] and object structures
+        const roles = (result.user as any).roles || [];
+        const userRoles = Array.isArray(roles) ? roles : [];
+        const isAdminOrStaff = userRoles.some((r: any) =>
+          r === 'admin' || r === 'staff' ||
+          r?.name === 'admin' || r?.name === 'staff' ||
+          r?.role?.name === 'admin' || r?.role?.name === 'staff'
+        );
+
+        if (isAdminOrStaff) {
+          router.push('/dashboard');
+        } else {
+          router.push('/');
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Login failed');
@@ -144,7 +155,7 @@ export function LoginForm({
       setIsLoading(true);
       try {
         const result = await googleAuth(tokenResponse.access_token);
-        
+
         // Check if account linking is required
         if ('requiresLink' in result && result.requiresLink) {
           const linkResult = result as GoogleAuthLinkRequired;
@@ -165,14 +176,25 @@ export function LoginForm({
         const authResult = result as GoogleAuthResponse;
         await refreshUser();
         toast.success('Welcome back!');
-        
+
         const redirectUrl = searchParams.get('redirect');
         if (redirectUrl) {
           router.push(redirectUrl);
-        } else if (authResult.user.roles.includes('admin') || authResult.user.roles.includes('staff')) {
-          router.push('/dashboard');
         } else {
-          router.push('/');
+          // Robust role check
+          const roles = (authResult.user as any).roles || [];
+          const userRoles = Array.isArray(roles) ? roles : [];
+          const isAdminOrStaff = userRoles.some((r: any) =>
+            r === 'admin' || r === 'staff' ||
+            r?.name === 'admin' || r?.name === 'staff' ||
+            r?.role?.name === 'admin' || r?.role?.name === 'staff'
+          );
+
+          if (isAdminOrStaff) {
+            router.push('/dashboard');
+          } else {
+            router.push('/');
+          }
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Google sign-in failed');
@@ -204,7 +226,7 @@ export function LoginForm({
           <p className="text-center text-sm text-muted-foreground">
             Didn&apos;t receive the email? Check your spam folder or try again.
           </p>
-          
+
           <Button
             variant="outline"
             className="w-full"
@@ -243,7 +265,7 @@ export function LoginForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            {loginMethod === 'password' 
+            {loginMethod === 'password'
               ? 'Enter your credentials to log in'
               : 'Enter your email to receive a login link'
             }
@@ -365,7 +387,7 @@ export function LoginForm({
                   'Send login link'
                 )}
               </Button>
-              
+
               <p className="text-center text-xs text-muted-foreground">
                 We&apos;ll send you a secure link to log in without a password.
               </p>
@@ -376,10 +398,10 @@ export function LoginForm({
         <FieldSeparator>Or continue with</FieldSeparator>
 
         <Field>
-          <Button 
-            variant="outline" 
-            type="button" 
-            disabled={isLoading} 
+          <Button
+            variant="outline"
+            type="button"
+            disabled={isLoading}
             className="w-full"
             onClick={() => googleLogin()}
           >
