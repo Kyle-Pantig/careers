@@ -16,6 +16,9 @@ RUN bunx prisma generate
 # Copy source code (Copy from backend folder)
 COPY backend/ .
 
+# Copy shared library for relative imports (../../../shared)
+COPY shared /shared
+
 # Expose port
 ENV PORT=3001
 EXPOSE 3001
