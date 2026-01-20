@@ -188,6 +188,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           emailVerified: user.emailVerified,
           roles,
         },
+        // Return token in response body for mobile devices that block cookies
+        token,
       };
     },
     {

@@ -44,8 +44,17 @@ async function getUserPermissionLevel(userId: string): Promise<{
 }
 
 export const authMiddleware = new Elysia({ name: 'auth-middleware' })
-  .derive({ as: 'global' }, ({ cookie }) => {
-    const token = cookie.token?.value as string | undefined;
+  .derive({ as: 'global' }, ({ cookie, headers }) => {
+    // First try to get token from cookie
+    let token = cookie.token?.value as string | undefined;
+
+    // If no cookie, check Authorization header (for mobile devices)
+    if (!token) {
+      const authHeader = headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
 
     if (!token) {
       return { user: null };

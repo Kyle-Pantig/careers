@@ -1,6 +1,6 @@
 import { Job } from './jobs';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = '/api/proxy';
 
 export interface SavedJob {
   id: string;

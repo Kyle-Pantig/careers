@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,8 +9,14 @@ import Link from 'next/link';
 
 export function CookieConsent() {
     const [isVisible, setIsVisible] = useState(false);
+    const [isHandled, setIsHandled] = useState(false);
+    const hasChecked = useRef(false);
 
     useEffect(() => {
+        // Prevent double execution in StrictMode
+        if (hasChecked.current) return;
+        hasChecked.current = true;
+
         // Check if user has already made a choice
         const consent = localStorage.getItem('cookie-consent');
         if (!consent) {
@@ -21,6 +27,10 @@ export function CookieConsent() {
     }, []);
 
     const handleAccept = () => {
+        // Prevent double clicks
+        if (isHandled) return;
+        setIsHandled(true);
+
         localStorage.setItem('cookie-consent', 'accepted');
         setIsVisible(false);
 
@@ -34,6 +44,10 @@ export function CookieConsent() {
     };
 
     const handleDecline = () => {
+        // Prevent double clicks
+        if (isHandled) return;
+        setIsHandled(true);
+
         localStorage.setItem('cookie-consent', 'declined');
         setIsVisible(false);
 
@@ -78,12 +92,14 @@ export function CookieConsent() {
                                 <Button
                                     variant="outline"
                                     onClick={handleDecline}
+                                    disabled={isHandled}
                                     className="w-full sm:w-auto"
                                 >
                                     Decline
                                 </Button>
                                 <Button
                                     onClick={handleAccept}
+                                    disabled={isHandled}
                                     className="w-full sm:w-auto"
                                 >
                                     Accept
@@ -92,6 +108,7 @@ export function CookieConsent() {
                         </div>
                         <button
                             onClick={handleDecline}
+                            disabled={isHandled}
                             className="absolute right-2 top-2 rounded-full p-1 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-900 group-hover:opacity-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
                             aria-label="Close"
                         >

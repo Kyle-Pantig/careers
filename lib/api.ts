@@ -1,7 +1,10 @@
-// app/lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const PROXY_URL = '/api/proxy';
 
 export async function fetchAPI(endpoint: string, options?: RequestInit) {
-  const res = await fetch(`${API_URL}${endpoint}`, options);
+  // Use proxy for backend calls to avoid cross-domain cookie issues
+  const res = await fetch(`${PROXY_URL}${endpoint}`, {
+    ...options,
+    credentials: options?.credentials || 'include',
+  });
   return res.json();
 }

@@ -4,7 +4,7 @@ import {
   type StaffPermissionLevel,
 } from '@/shared/validators/permissions';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = '/api/proxy';
 
 export interface UserRole {
   id: string;

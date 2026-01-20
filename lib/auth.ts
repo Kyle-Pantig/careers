@@ -1,5 +1,9 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// We use relative paths for API calls so they can be proxied through the Next.js server
+// this avoids cross-site cookie issues on mobile devices
+const PROXY_URL = '/api/proxy';
+
 export interface User {
   id: string;
   firstName: string;
@@ -52,7 +56,7 @@ export interface LoginData {
 }
 
 export async function register(data: RegisterData): Promise<{ message: string; user: User }> {
-  const res = await fetch(`${API_URL}/auth/register`, {
+  const res = await fetch(`${PROXY_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -69,7 +73,7 @@ export async function register(data: RegisterData): Promise<{ message: string; u
 }
 
 export async function login(data: LoginData): Promise<AuthResponse> {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const res = await fetch(`${PROXY_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -86,7 +90,7 @@ export async function login(data: LoginData): Promise<AuthResponse> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch(`${API_URL}/auth/logout`, {
+  await fetch(`${PROXY_URL}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   });
@@ -94,7 +98,7 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const res = await fetch(`${API_URL}/auth/me`, {
+    const res = await fetch(`${PROXY_URL}/auth/me`, {
       credentials: 'include',
     });
 
@@ -110,7 +114,7 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function verifyEmail(token: string): Promise<{ message: string }> {
-  const res = await fetch(`${API_URL}/auth/verify-email`, {
+  const res = await fetch(`${PROXY_URL}/auth/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -127,7 +131,7 @@ export async function verifyEmail(token: string): Promise<{ message: string }> {
 }
 
 export async function resendVerificationEmail(email: string): Promise<{ message: string; cooldown?: number }> {
-  const res = await fetch(`${API_URL}/auth/resend-verification`, {
+  const res = await fetch(`${PROXY_URL}/auth/resend-verification`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -147,7 +151,7 @@ export async function resendVerificationEmail(email: string): Promise<{ message:
 }
 
 export async function forgotPassword(email: string): Promise<{ message: string; cooldown?: number }> {
-  const res = await fetch(`${API_URL}/auth/forgot-password`, {
+  const res = await fetch(`${PROXY_URL}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -167,7 +171,7 @@ export async function forgotPassword(email: string): Promise<{ message: string; 
 }
 
 export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
-  const res = await fetch(`${API_URL}/auth/reset-password`, {
+  const res = await fetch(`${PROXY_URL}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -184,7 +188,7 @@ export async function resetPassword(token: string, password: string): Promise<{ 
 }
 
 export async function requestMagicLink(email: string): Promise<{ message: string; cooldown?: number }> {
-  const res = await fetch(`${API_URL}/auth/magic-link/request`, {
+  const res = await fetch(`${PROXY_URL}/auth/magic-link/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -204,7 +208,7 @@ export async function requestMagicLink(email: string): Promise<{ message: string
 }
 
 export async function verifyMagicLink(token: string): Promise<AuthResponse> {
-  const res = await fetch(`${API_URL}/auth/magic-link/verify`, {
+  const res = await fetch(`${PROXY_URL}/auth/magic-link/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -228,7 +232,7 @@ export interface UpdateProfileData {
 }
 
 export async function updateProfile(data: UpdateProfileData): Promise<{ message: string; user: User }> {
-  const res = await fetch(`${API_URL}/auth/me`, {
+  const res = await fetch(`${PROXY_URL}/auth/me`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -248,7 +252,7 @@ export async function uploadResume(file: File): Promise<{ message: string; user:
   const formData = new FormData();
   formData.append('resume', file);
 
-  const res = await fetch(`${API_URL}/auth/me/resume`, {
+  const res = await fetch(`${PROXY_URL}/auth/me/resume`, {
     method: 'POST',
     credentials: 'include',
     body: formData,
@@ -264,7 +268,7 @@ export async function uploadResume(file: File): Promise<{ message: string; user:
 }
 
 export async function deleteResume(): Promise<{ message: string; user: User }> {
-  const res = await fetch(`${API_URL}/auth/me/resume`, {
+  const res = await fetch(`${PROXY_URL}/auth/me/resume`, {
     method: 'DELETE',
     credentials: 'include',
   });
@@ -284,7 +288,7 @@ export interface ChangePasswordData {
 }
 
 export async function changePassword(data: ChangePasswordData): Promise<{ message: string }> {
-  const res = await fetch(`${API_URL}/auth/me/change-password`, {
+  const res = await fetch(`${PROXY_URL}/auth/me/change-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -302,7 +306,7 @@ export async function changePassword(data: ChangePasswordData): Promise<{ messag
 
 // Set password for OAuth-only users (no existing password)
 export async function setPassword(password: string): Promise<{ message: string }> {
-  const res = await fetch(`${API_URL}/auth/me/set-password`, {
+  const res = await fetch(`${PROXY_URL}/auth/me/set-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -340,7 +344,7 @@ export interface GoogleAuthLinkRequired {
 
 // Authenticate with Google access token (from Google Sign-In)
 export async function googleAuth(credential: string): Promise<GoogleAuthResponse | GoogleAuthLinkRequired> {
-  const res = await fetch(`${API_URL}/auth/google`, {
+  const res = await fetch(`${PROXY_URL}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -363,7 +367,7 @@ export async function googleAuth(credential: string): Promise<GoogleAuthResponse
 
 // Confirm account linking (verify password before linking Google)
 export async function confirmAccountLink(token: string, password: string): Promise<{ message: string; needsGoogleAuth: boolean; email: string }> {
-  const res = await fetch(`${API_URL}/auth/link-account/confirm`, {
+  const res = await fetch(`${PROXY_URL}/auth/link-account/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -384,7 +388,7 @@ export async function completeAccountLink(data: {
   email: string;
   googleId: string;
 }): Promise<{ message: string; user: User }> {
-  const res = await fetch(`${API_URL}/auth/link-account/complete`, {
+  const res = await fetch(`${PROXY_URL}/auth/link-account/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -402,7 +406,7 @@ export async function completeAccountLink(data: {
 
 // Get linked accounts for current user
 export async function getLinkedAccounts(): Promise<{ accounts: LinkedAccount[]; hasCredentials: boolean }> {
-  const res = await fetch(`${API_URL}/auth/me/accounts`, {
+  const res = await fetch(`${PROXY_URL}/auth/me/accounts`, {
     credentials: 'include',
   });
 
