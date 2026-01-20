@@ -23,7 +23,11 @@ COPY . .
 # Generate Prisma Client
 # Generate Prisma Client
 
-RUN bunx prisma generate --schema=./prisma/schema.prisma
+# Debugging: List files to verifying context
+RUN ls -la
+RUN ls -la prisma || echo "prisma dir not found"
+
+RUN bunx prisma generate
 
 # [Optional] Run tests here if you have them
 # RUN bun test
