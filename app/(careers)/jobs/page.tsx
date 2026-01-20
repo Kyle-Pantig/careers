@@ -78,73 +78,73 @@ export default function JobsPage() {
 
   const router = useRouter();
   const { user } = useAuth();
-  
+
   // Admin/staff cannot save or apply for jobs
   const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
-  
+
   // Zustand store for filters (persisted in sessionStorage)
-  const { 
-    search, 
-    workType: selectedWorkType, 
+  const {
+    search,
+    workType: selectedWorkType,
     location: selectedLocation,
     setSearch,
     setWorkType: setSelectedWorkType,
     setLocation: setSelectedLocation,
     clearFilters: clearStoreFilters,
   } = useMainJobFilters();
-  
+
   // Local state for industry filter (not persisted) and popover
   const [selectedIndustry, setSelectedIndustry] = useState<string>('all');
   const [locationOpen, setLocationOpen] = useState(false);
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
-  
+
   // Track screen size for responsive job count
   const [isLargeScreen, setIsLargeScreen] = useState(false);
-  
+
   useEffect(() => {
     const checkScreenSize = () => {
       setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint
     };
-    
+
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
-  
+
   // Number of jobs to display per industry based on screen size
   const jobsPerIndustry = isLargeScreen ? 6 : 4;
 
   // Fetch jobs and industries
   const { data: jobsData, isLoading: loadingJobs } = useJobs({ limit: 100 });
   const { data: industries = [], isLoading: loadingIndustries } = useIndustries();
-  
+
   // Saved jobs - only fetch if user is authenticated and not admin/staff
   const { data: savedJobs = [] } = useSavedJobs(!!user && !isAdminOrStaff);
   const saveJobMutation = useSaveJob();
   const unsaveJobMutation = useUnsaveJob();
-  
+
   // User applications - to check if already applied
   const { data: applicationsData } = useUserApplications(user?.id);
-  
-  // Get applied job IDs for quick lookup (jobId -> applicationId)
-  const appliedJobIds = useMemo(() => {
-    if (!applicationsData?.applications) return new Map<string, string>();
+
+  // Get applied jobs for quick lookup (jobId -> { id, status })
+  const appliedJobsMap = useMemo(() => {
+    if (!applicationsData?.applications) return new Map<string, { id: string; status: string }>();
     return new Map(
-      applicationsData.applications.map((app) => [app.jobId, app.id])
+      applicationsData.applications.map((app) => [app.jobId, { id: app.id, status: app.status }])
     );
   }, [applicationsData]);
-  
+
   // Get saved job IDs for quick lookup
   const savedJobIds = useMemo(() => {
     return new Set(savedJobs.map((sj) => sj.job.id));
   }, [savedJobs]);
-  
+
   const handleSaveJob = async (jobId: string, jobNumber: string) => {
     if (!user) {
       router.push(`/login?redirect=/jobs`);
       return;
     }
-    
+
     setSavingJobId(jobId);
     try {
       if (savedJobIds.has(jobId)) {
@@ -156,17 +156,17 @@ export default function JobsPage() {
         if (result.requiresLogin) {
           router.push(`/login?redirect=/jobs`);
         } else {
-        toast.success('Job saved successfully', {
-          action: {
-            label: 'View Saved Jobs',
-            onClick: () => router.push('/my-applications?tab=saved'),
-          },
-          actionButtonStyle: {
-            borderRadius: '9999px',
-            backgroundColor: 'hsl(var(--primary))',
-            color: 'hsl(var(--primary-foreground))',
-          },
-        });
+          toast.success('Job saved successfully', {
+            action: {
+              label: 'View Saved Jobs',
+              onClick: () => router.push('/my-applications?tab=saved'),
+            },
+            actionButtonStyle: {
+              borderRadius: '9999px',
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+            },
+          });
         }
       }
     } finally {
@@ -281,27 +281,27 @@ export default function JobsPage() {
         {/* Faded corners overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,hsl(var(--background)/0.8)_70%,hsl(var(--background))_100%)]" />
         <MaxWidthLayout className="py-16 md:py-24 relative">
-          <motion.div 
+          <motion.div
             className="max-w-3xl"
             initial="hidden"
             animate="visible"
             variants={staggerContainer}
           >
-            <motion.h1 
+            <motion.h1
               className="text-4xl md:text-5xl font-bold tracking-tight mb-4"
               variants={fadeInUp}
               transition={{ duration: 0.6 }}
             >
               Join Our <span className="text-primary">Team</span>
             </motion.h1>
-            <motion.p 
+            <motion.p
               className="text-lg text-muted-foreground mb-8"
               variants={fadeInUp}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               Explore open positions across our departments and take the next step in your career with us.
             </motion.p>
-            <motion.div 
+            <motion.div
               className="flex items-center gap-3"
               variants={fadeInUp}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -334,332 +334,338 @@ export default function JobsPage() {
           {/* Filters Row */}
           <div className="flex flex-wrap gap-3">
             {/* Industry Filter */}
-          <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="All Industries" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Industries</SelectItem>
-              {industries.map((industry) => (
-                <SelectItem key={industry.id} value={industry.id}>
-                  {industry.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Industries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Industries</SelectItem>
+                {industries.map((industry) => (
+                  <SelectItem key={industry.id} value={industry.id}>
+                    {industry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Work Type Filter */}
-          <Select value={selectedWorkType} onValueChange={setSelectedWorkType}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="All Work Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Work Types</SelectItem>
-              {Object.entries(WORK_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {/* Work Type Filter */}
+            <Select value={selectedWorkType} onValueChange={setSelectedWorkType}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Work Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Work Types</SelectItem>
+                {Object.entries(WORK_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Location Filter - Combobox */}
-          <Popover open={locationOpen} onOpenChange={setLocationOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={locationOpen}
-                className="w-full sm:w-[200px] justify-between font-normal bg-transparent"
-              >
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 " />
-                  {!selectedLocation ? (
-                    <span>All Locations</span>
-                  ) : (
-                    <span className="truncate">{selectedLocation}</span>
-                  )}
-                </div>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search location..." />
-                <CommandList>
-                  <CommandEmpty>No location found.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="all-locations"
-                      onSelect={() => {
-                        setSelectedLocation('');
-                        setLocationOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          !selectedLocation ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                      All Locations
-                    </CommandItem>
-                    {locations.map((location) => (
+            {/* Location Filter - Combobox */}
+            <Popover open={locationOpen} onOpenChange={setLocationOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={locationOpen}
+                  className="w-full sm:w-[200px] justify-between font-normal bg-transparent"
+                >
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-2 " />
+                    {!selectedLocation ? (
+                      <span>All Locations</span>
+                    ) : (
+                      <span className="truncate">{selectedLocation}</span>
+                    )}
+                  </div>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search location..." />
+                  <CommandList>
+                    <CommandEmpty>No location found.</CommandEmpty>
+                    <CommandGroup>
                       <CommandItem
-                        key={location}
-                        value={location}
+                        value="all-locations"
                         onSelect={() => {
-                          setSelectedLocation(location);
+                          setSelectedLocation('');
                           setLocationOpen(false);
                         }}
                       >
                         <Check
                           className={cn(
                             'mr-2 h-4 w-4',
-                            selectedLocation === location ? 'opacity-100' : 'opacity-0'
+                            !selectedLocation ? 'opacity-100' : 'opacity-0'
                           )}
                         />
-                        {location}
+                        All Locations
                       </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+                      {locations.map((location) => (
+                        <CommandItem
+                          key={location}
+                          value={location}
+                          onSelect={() => {
+                            setSelectedLocation(location);
+                            setLocationOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedLocation === location ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          {location}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Active Filters */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                Filters:
+              </span>
+              {search && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: {search}
+                  <button onClick={() => setSearch('')}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedIndustry !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  {industries.find((i) => i.id === selectedIndustry)?.name}
+                  <button onClick={() => setSelectedIndustry('all')}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedWorkType !== 'all' && (
+                <Badge variant="secondary" className="gap-1">
+                  {WORK_TYPE_LABELS[selectedWorkType as keyof typeof WORK_TYPE_LABELS]}
+                  <button onClick={() => setSelectedWorkType('all')}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedLocation && (
+                <Badge variant="secondary" className="gap-1">
+                  {selectedLocation}
+                  <button onClick={() => setSelectedLocation('')}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 text-xs">
+                Clear all
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Active Filters */}
-        {hasActiveFilters && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground flex items-center gap-1">
-              <Filter className="h-3 w-3" />
-              Filters:
-            </span>
-            {search && (
-              <Badge variant="secondary" className="gap-1">
-                Search: {search}
-                <button onClick={() => setSearch('')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedIndustry !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                {industries.find((i) => i.id === selectedIndustry)?.name}
-                <button onClick={() => setSelectedIndustry('all')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedWorkType !== 'all' && (
-              <Badge variant="secondary" className="gap-1">
-                {WORK_TYPE_LABELS[selectedWorkType as keyof typeof WORK_TYPE_LABELS]}
-                <button onClick={() => setSelectedWorkType('all')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {selectedLocation && (
-              <Badge variant="secondary" className="gap-1">
-                {selectedLocation}
-                <button onClick={() => setSelectedLocation('')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 text-xs">
-              Clear all
-            </Button>
+        {/* Results Count */}
+        <div className="mb-6">
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}
+            {hasActiveFilters && ` (filtered from ${jobs.length})`}
+          </p>
+        </div>
+
+        {/* Loading State */}
+        {(loadingJobs || loadingIndustries) && (
+          <div className="space-y-8">
+            {[1, 2].map((i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="h-8 w-48" />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Skeleton className="h-48" />
+                  <Skeleton className="h-48" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
-      </div>
 
-      {/* Results Count */}
-      <div className="mb-6">
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}
-          {hasActiveFilters && ` (filtered from ${jobs.length})`}
-        </p>
-      </div>
+        {/* No Results */}
+        {!loadingJobs && filteredJobs.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center">
+              <Briefcase className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
+              <p className="text-muted-foreground mb-4">
+                {hasActiveFilters
+                  ? 'Try adjusting your filters or search terms.'
+                  : 'There are no open positions at the moment. Check back later!'}
+              </p>
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Loading State */}
-      {(loadingJobs || loadingIndustries) && (
-        <div className="space-y-8">
-          {[1, 2].map((i) => (
-            <div key={i} className="space-y-4">
-              <Skeleton className="h-8 w-48" />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Skeleton className="h-48" />
-                <Skeleton className="h-48" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        {/* Jobs by Industry */}
+        {!loadingJobs && jobsByIndustry.length > 0 && (
+          <div className="space-y-10">
+            {jobsByIndustry.map(({ industry, jobs: industryJobs }) => {
+              const displayJobs = industryJobs.slice(0, jobsPerIndustry);
+              const hasMore = industryJobs.length > jobsPerIndustry;
 
-      {/* No Results */}
-      {!loadingJobs && filteredJobs.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <Briefcase className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
-            <p className="text-muted-foreground mb-4">
-              {hasActiveFilters
-                ? 'Try adjusting your filters or search terms.'
-                : 'There are no open positions at the moment. Check back later!'}
-            </p>
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Jobs by Industry */}
-      {!loadingJobs && jobsByIndustry.length > 0 && (
-        <div className="space-y-10">
-          {jobsByIndustry.map(({ industry, jobs: industryJobs }) => {
-            const displayJobs = industryJobs.slice(0, jobsPerIndustry);
-            const hasMore = industryJobs.length > jobsPerIndustry;
-            
-            return (
-              <section key={industry.id}>
-                {/* Industry Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <Link 
-                    href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}
-                    className="flex items-center gap-3 group"
-                  >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <h2 className="text-xl font-semibold underline decoration-primary/30 underline-offset-4 group-hover:decoration-primary transition-colors">{industry.name}</h2>
-                  </Link>
-                  {hasMore && (
-                    <Button variant="ghost" size="sm" asChild className="gap-1">
-                      <Link href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}>
-                        Browse All
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-
-                {/* Job Cards - Show only 6 */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {displayJobs.map((job) => (
-                    <Card key={job.id} className="h-full hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg line-clamp-1">
-                              {job.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground font-mono">
-                              {job.jobNumber}
-                            </p>
-                          </div>
-                          {/* Save button - hidden for admin/staff */}
-                          {!isAdminOrStaff && (
-                            <Button
-                              variant={savedJobIds.has(job.id) ? "default" : "outline"}
-                              size="icon"
-                              className="h-8 w-8 flex-shrink-0 rounded-full"
-                              onClick={() => handleSaveJob(job.id, job.jobNumber)}
-                              disabled={savingJobId === job.id}
-                            >
-                              {savingJobId === job.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : savedJobIds.has(job.id) ? (
-                                <BookmarkCheck className="h-4 w-4" />
-                              ) : (
-                                <Bookmark className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0 space-y-4">
-                        {/* Location & Work Type */}
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <MapPin className="h-3 w-3" />
-                            {job.location}
-                          </Badge>
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <Briefcase className="h-3 w-3" />
-                            {WORK_TYPE_LABELS[job.workType]}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {JOB_TYPE_LABELS[job.jobType]}
-                          </Badge>
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            <Clock className="h-3 w-3" />
-                            {SHIFT_TYPE_LABELS[job.shiftType]}
-                          </Badge>
-                        </div>
-
-                        {/* Posted Date */}
-                        {job.publishedAt && (
-                          <p className="text-xs text-muted-foreground">
-                            Posted {formatTimeAgo(job.publishedAt)}
-                          </p>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-2">
-                          <Button variant="outline" size="sm" asChild className="flex-1 rounded-full">
-                            <Link href={`/jobs/${job.jobNumber}`}>
-                              View Details
-                            </Link>
-                          </Button>
-                          {/* Expired shown for all, Apply/View Application hidden for admin/staff */}
-                          {isJobExpired(job.expiresAt) ? (
-                            <Button size="sm" variant="destructive" className="flex-1 rounded-full" disabled>
-                              Expired
-                            </Button>
-                          ) : !isAdminOrStaff && (
-                            appliedJobIds.has(job.id) ? (
-                              <Button size="sm" variant="secondary" className="flex-1 rounded-full" asChild>
-                                <Link href={`/my-applications/${appliedJobIds.get(job.id)}`}>
-                                  View Application
-                                </Link>
-                              </Button>
-                            ) : (
-                              <Button size="sm" className="flex-1 rounded-full" asChild>
-                                <Link href={`/jobs/${job.jobNumber}/apply`}>
-                                  Apply
-                                </Link>
-                              </Button>
-                            )
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                {/* Browse All Button - Bottom (for mobile) */}
-                {hasMore && (
-                  <div className="mt-4 text-center md:hidden">
-                    <Button variant="outline" asChild className="rounded-full">
-                      <Link href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}>
-                        View all {industryJobs.length} {industry.name} jobs
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Link>
-                    </Button>
+              return (
+                <section key={industry.id}>
+                  {/* Industry Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Link
+                      href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}
+                      className="flex items-center gap-3 group"
+                    >
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <h2 className="text-xl font-semibold underline decoration-primary/30 underline-offset-4 group-hover:decoration-primary transition-colors">{industry.name}</h2>
+                    </Link>
+                    {hasMore && (
+                      <Button variant="ghost" size="sm" asChild className="gap-1">
+                        <Link href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}>
+                          Browse All
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
                   </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      )}
+
+                  {/* Job Cards - Show only 6 */}
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {displayJobs.map((job) => {
+                      const existingApp = appliedJobsMap.get(job.id);
+                      const isRejected = existingApp?.status.toLowerCase() === 'rejected' || existingApp?.status.toLowerCase() === 'not_selected';
+                      const hasActiveApp = !!existingApp && !isRejected;
+
+                      return (
+                        <Card key={job.id} className="h-full hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-lg line-clamp-1">
+                                  {job.title}
+                                </h3>
+                                <p className="text-sm text-muted-foreground font-mono">
+                                  {job.jobNumber}
+                                </p>
+                              </div>
+                              {/* Save button - hidden for admin/staff */}
+                              {!isAdminOrStaff && (
+                                <Button
+                                  variant={savedJobIds.has(job.id) ? "default" : "outline"}
+                                  size="icon"
+                                  className="h-8 w-8 flex-shrink-0 rounded-full"
+                                  onClick={() => handleSaveJob(job.id, job.jobNumber)}
+                                  disabled={savingJobId === job.id}
+                                >
+                                  {savingJobId === job.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : savedJobIds.has(job.id) ? (
+                                    <BookmarkCheck className="h-4 w-4" />
+                                  ) : (
+                                    <Bookmark className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0 space-y-4">
+                            {/* Location & Work Type */}
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <MapPin className="h-3 w-3" />
+                                {job.location}
+                              </Badge>
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <Briefcase className="h-3 w-3" />
+                                {WORK_TYPE_LABELS[job.workType]}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {JOB_TYPE_LABELS[job.jobType]}
+                              </Badge>
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <Clock className="h-3 w-3" />
+                                {SHIFT_TYPE_LABELS[job.shiftType]}
+                              </Badge>
+                            </div>
+
+                            {/* Posted Date */}
+                            {job.publishedAt && (
+                              <p className="text-xs text-muted-foreground">
+                                Posted {formatTimeAgo(job.publishedAt)}
+                              </p>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 pt-2">
+                              <Button variant="outline" size="sm" asChild className="flex-1 rounded-full">
+                                <Link href={`/jobs/${job.jobNumber}`}>
+                                  View Details
+                                </Link>
+                              </Button>
+                              {/* Expired shown for all, Apply/View Application hidden for admin/staff */}
+                              {isJobExpired(job.expiresAt) ? (
+                                <Button size="sm" variant="destructive" className="flex-1 rounded-full" disabled>
+                                  Expired
+                                </Button>
+                              ) : !isAdminOrStaff && (
+                                hasActiveApp ? (
+                                  <Button size="sm" variant="secondary" className="flex-1 rounded-full" asChild>
+                                    <Link href={`/my-applications/${existingApp.id}`}>
+                                      View Application
+                                    </Link>
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" className="flex-1 rounded-full" asChild>
+                                    <Link href={`/jobs/${job.jobNumber}/apply`}>
+                                      Apply
+                                    </Link>
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* Browse All Button - Bottom (for mobile) */}
+                  {hasMore && (
+                    <div className="mt-4 text-center md:hidden">
+                      <Button variant="outline" asChild className="rounded-full">
+                        <Link href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}>
+                          View all {industryJobs.length} {industry.name} jobs
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
       </MaxWidthLayout>
     </>
   );

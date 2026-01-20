@@ -35,48 +35,48 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { WORK_TYPE_LABELS, JOB_TYPE_LABELS } from '@/shared/validators';
 
 // Status configuration
-const STATUS_CONFIG: Record<string, { 
-  label: string; 
+const STATUS_CONFIG: Record<string, {
+  label: string;
   icon: React.ReactNode;
   description: string;
   bgClass: string;
   textClass: string;
   borderClass: string;
 }> = {
-  pending: { 
-    label: 'Pending Review', 
+  pending: {
+    label: 'Pending Review',
     icon: <Clock className="h-5 w-5" />,
     description: 'Your application is awaiting review by our team.',
     bgClass: 'bg-amber-50 dark:bg-amber-950/30',
     textClass: 'text-amber-700 dark:text-amber-400',
     borderClass: 'border-amber-200 dark:border-amber-800',
   },
-  reviewed: { 
-    label: 'In Review', 
+  reviewed: {
+    label: 'In Review',
     icon: <Eye className="h-5 w-5" />,
     description: 'Your application is currently being reviewed.',
     bgClass: 'bg-blue-50 dark:bg-blue-950/30',
     textClass: 'text-blue-700 dark:text-blue-400',
     borderClass: 'border-blue-200 dark:border-blue-800',
   },
-  shortlisted: { 
-    label: 'Shortlisted', 
+  shortlisted: {
+    label: 'Shortlisted',
     icon: <Star className="h-5 w-5" />,
     description: 'Congratulations! You have been shortlisted for this position.',
     bgClass: 'bg-violet-50 dark:bg-violet-950/30',
     textClass: 'text-violet-700 dark:text-violet-400',
     borderClass: 'border-violet-200 dark:border-violet-800',
   },
-  rejected: { 
-    label: 'Not Selected', 
+  rejected: {
+    label: 'Not Selected',
     icon: <XCircle className="h-5 w-5" />,
     description: 'Unfortunately, your application was not selected for this position.',
     bgClass: 'bg-slate-50 dark:bg-slate-950/30',
     textClass: 'text-slate-600 dark:text-slate-400',
     borderClass: 'border-slate-200 dark:border-slate-700',
   },
-  hired: { 
-    label: 'Hired', 
+  hired: {
+    label: 'Hired',
     icon: <UserCheck className="h-5 w-5" />,
     description: 'Congratulations! You have been hired for this position.',
     bgClass: 'bg-emerald-50 dark:bg-emerald-950/30',
@@ -248,23 +248,7 @@ export default function ApplicationDetailPage() {
         </Button>
 
         {/* Status Card */}
-        <Card className={`border ${status.borderClass} ${status.bgClass}`}>
-          <CardContent className="py-0">
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-full ${status.bgClass} ${status.textClass}`}>
-                {status.icon}
-              </div>
-              <div className="flex-1">
-                <h2 className={`text-lg font-semibold ${status.textClass}`}>
-                  {status.label}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {status.description}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Job Details Card */}
         {job && (
@@ -410,9 +394,9 @@ export default function ApplicationDetailPage() {
                 const v = values[f.key];
                 return v !== undefined && v !== null && v !== '';
               });
-              
+
               if (fieldsWithValues.length === 0) return null;
-              
+
               return (
                 <>
                   <Separator className="my-6" />
@@ -456,9 +440,9 @@ export default function ApplicationDetailPage() {
                   <p className="font-medium truncate">{application.resumeFileName}</p>
                   <p className="text-sm text-muted-foreground">PDF Document</p>
                 </div>
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={() => setPdfViewerOpen(true)}
                   className="rounded-full gap-2"
                 >

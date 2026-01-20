@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GalleryVerticalEnd, Link2, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -11,18 +11,18 @@ import { confirmAccountLink, completeAccountLink } from '@/lib/auth';
 import { useAuth } from '@/context';
 import { toast } from 'sonner';
 
-export default function LinkAccountPage() {
+function LinkAccountForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
-  
+
   const token = searchParams.get('token');
   const provider = searchParams.get('provider');
   const providerName = searchParams.get('name');
   const email = searchParams.get('email');
   const googleId = searchParams.get('googleId');
   const redirect = searchParams.get('redirect') || '/';
-  
+
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function LinkAccountPage() {
 
   const handleLinkAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!token || !email || !googleId) {
       setError('Invalid link request. Please try signing in with Google again.');
       return;
@@ -42,7 +42,7 @@ export default function LinkAccountPage() {
     try {
       // First verify the password
       await confirmAccountLink(token, password);
-      
+
       // Password verified, now complete the linking
       const result = await completeAccountLink({
         email,
@@ -52,7 +52,7 @@ export default function LinkAccountPage() {
       // Success - refresh user and redirect
       await refreshUser();
       toast.success('Account linked successfully!');
-      
+
       if (result.user.roles?.includes('admin') || result.user.roles?.includes('staff')) {
         router.push(redirect !== '/' ? redirect : '/dashboard');
       } else {
@@ -187,9 +187,9 @@ export default function LinkAccountPage() {
                     Link Account & Sign In
                   </Button>
 
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={handleCancel}
                     disabled={isLoading}
                     className="w-full"
@@ -216,5 +216,13 @@ export default function LinkAccountPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function LinkAccountPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <LinkAccountForm />
+    </Suspense>
   );
 }

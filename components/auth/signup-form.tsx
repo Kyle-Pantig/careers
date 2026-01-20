@@ -66,7 +66,7 @@ export function SignupForm({
       setIsLoading(true);
       try {
         const result = await googleAuth(tokenResponse.access_token);
-        
+
         // Check if account linking is required
         if ('requiresLink' in result && result.requiresLink) {
           const linkResult = result as GoogleAuthLinkRequired;
@@ -85,7 +85,8 @@ export function SignupForm({
 
         // Success - refresh user and redirect
         await refreshUser();
-        toast.success(result.isNewUser ? 'Account created successfully!' : 'Welcome back!');
+        // Cast to any because TS doesn't narrow the discriminated union automatically after the early return check
+        toast.success((result as any).isNewUser ? 'Account created successfully!' : 'Welcome back!');
         router.push('/');
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Google sign-up failed');
@@ -221,9 +222,9 @@ export function SignupForm({
         <FieldSeparator>Or continue with</FieldSeparator>
 
         <Field>
-          <Button 
-            variant="outline" 
-            type="button" 
+          <Button
+            variant="outline"
+            type="button"
             disabled={isLoading}
             onClick={() => googleLogin()}
           >

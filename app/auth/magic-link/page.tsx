@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GalleryVerticalEnd, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -9,12 +9,12 @@ import { verifyMagicLink } from '@/lib/auth';
 import { useAuth } from '@/context';
 import { toast } from 'sonner';
 
-export default function MagicLinkPage() {
+function MagicLinkContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const { refreshUser } = useAuth();
-  
+
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
@@ -25,19 +25,19 @@ export default function MagicLinkPage() {
       setStatus('error');
       setMessage('No sign-in token provided.');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleVerification = async (verificationToken: string) => {
     try {
       const result = await verifyMagicLink(verificationToken);
       setStatus('success');
-      
+
       // Refresh auth context
       await refreshUser();
-      
+
       toast.success('Welcome back!');
-      
+
       // Redirect based on role
       setTimeout(() => {
         if (result.user.roles.includes('admin') || result.user.roles.includes('staff')) {
@@ -74,7 +74,7 @@ export default function MagicLinkPage() {
                 <p className="text-muted-foreground">Please wait while we verify your sign-in link.</p>
               </>
             )}
-            
+
             {status === 'success' && (
               <>
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
@@ -84,7 +84,7 @@ export default function MagicLinkPage() {
                 <p className="text-muted-foreground mb-6">Redirecting you now...</p>
               </>
             )}
-            
+
             {status === 'error' && (
               <>
                 <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
@@ -113,5 +113,13 @@ export default function MagicLinkPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function MagicLinkPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <MagicLinkContent />
+    </Suspense>
   );
 }

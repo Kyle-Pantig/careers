@@ -32,76 +32,9 @@ async function generateJobNumber(): Promise<string> {
 }
 
 export const jobRoutes = new Elysia({ prefix: '/jobs' })
-  .use(authMiddleware)
-  // Get all jobs (admin/staff - includes unpublished)
-  .get(
-    '/admin',
-    async ({ query }) => {
-      const { page = '1', limit = '10', search, workType, isPublished, industryId } = query;
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-
-      const where: Record<string, unknown> = {};
-
-      if (search) {
-        where.OR = [
-          { jobNumber: { contains: search, mode: 'insensitive' } },
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { location: { contains: search, mode: 'insensitive' } },
-          { industry: { name: { contains: search, mode: 'insensitive' } } },
-        ];
-      }
-
-      if (workType) {
-        where.workType = workType;
-      }
-
-      if (isPublished !== undefined) {
-        where.isPublished = isPublished === 'true';
-      }
-
-      if (industryId) {
-        where.industryId = industryId;
-      }
-
-      const [jobs, total] = await Promise.all([
-        prisma.job.findMany({
-          where,
-          skip,
-          take: parseInt(limit),
-          orderBy: { createdAt: 'desc' },
-          include: {
-            industry: true,
-            _count: {
-              select: { applications: true, views: true },
-            },
-          },
-        }),
-        prisma.job.count({ where }),
-      ]);
-
-      return {
-        jobs,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / parseInt(limit)),
-        },
-      };
-    },
-    {
-      hasPermission: PERMISSIONS.JOBS_VIEW,
-      query: t.Object({
-        page: t.Optional(t.String()),
-        limit: t.Optional(t.String()),
-        search: t.Optional(t.String()),
-        workType: t.Optional(t.String()),
-        isPublished: t.Optional(t.String()),
-        industryId: t.Optional(t.String()),
-      }),
-    }
-  )
+  // =========================================================
+  // PUBLIC ROUTES
+  // =========================================================
 
   // Get all published jobs (public) - includes expired jobs so they can show "Expired" button
   .get(
@@ -178,7 +111,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
     }
   )
 
-  // Get single job by ID
+  // Get single job by ID (public)
   .get(
     '/:id',
     async ({ params, set }) => {
@@ -240,69 +173,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
     }
   )
 
-  // Get single job by job number (admin preview - includes unpublished)
-  .get(
-    '/admin/number/:jobNumber',
-    async ({ params, cookie, set }) => {
-      // Verify admin/staff
-      const token = cookie.token?.value as string | undefined;
-      if (!token) {
-        set.status = 401;
-        return { error: 'Unauthorized' };
-      }
-
-      const payload = verifyToken(token);
-      if (!payload) {
-        set.status = 401;
-        return { error: 'Invalid token' };
-      }
-
-      // Check if user is admin or staff
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        include: {
-          roles: {
-            include: { role: true },
-          },
-        },
-      });
-
-      if (!user) {
-        set.status = 404;
-        return { error: 'User not found' };
-      }
-
-      const roles = user.roles.map((ur) => ur.role.name);
-      if (!roles.includes('admin') && !roles.includes('staff')) {
-        set.status = 403;
-        return { error: 'Access denied' };
-      }
-
-      const job = await prisma.job.findUnique({
-        where: { jobNumber: params.jobNumber },
-        include: {
-          industry: true,
-          _count: {
-            select: { applications: true, views: true },
-          },
-        },
-      });
-
-      if (!job) {
-        set.status = 404;
-        return { error: 'Job not found' };
-      }
-
-      return { job };
-    },
-    {
-      params: t.Object({
-        jobNumber: t.String(),
-      }),
-    }
-  )
-
-  // Track job view
+  // Track job view (public)
   .post(
     '/:jobNumber/view',
     async ({ params, body, request, set }) => {
@@ -317,16 +188,16 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       }
 
       const userId = body.userId || null;
-      
+
       // Get IP address from request headers (common proxy headers)
       const forwardedFor = request.headers.get('x-forwarded-for');
       const realIp = request.headers.get('x-real-ip');
       const cfConnectingIp = request.headers.get('cf-connecting-ip');
       const rawIp = cfConnectingIp || realIp || forwardedFor?.split(',')[0]?.trim() || 'unknown';
-      
+
       // Hash IP for privacy
       const hashedIp = hashIpAddress(rawIp);
-      
+
       // Get user agent
       const userAgent = request.headers.get('user-agent') || null;
 
@@ -391,6 +262,144 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
       }),
       body: t.Object({
         userId: t.Optional(t.Nullable(t.String())),
+      }),
+    }
+  )
+
+  // =========================================================
+  // PROTECTED ROUTES
+  // =========================================================
+  .use(authMiddleware)
+
+  // Get all jobs (admin/staff - includes unpublished)
+  .get(
+    '/admin',
+    async ({ query }) => {
+      const { page = '1', limit = '10', search, workType, isPublished, industryId } = query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where: Record<string, unknown> = {};
+
+      if (search) {
+        where.OR = [
+          { jobNumber: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { location: { contains: search, mode: 'insensitive' } },
+          { industry: { name: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      if (workType) {
+        where.workType = workType;
+      }
+
+      if (isPublished !== undefined) {
+        where.isPublished = isPublished === 'true';
+      }
+
+      if (industryId) {
+        where.industryId = industryId;
+      }
+
+      const [jobs, total] = await Promise.all([
+        prisma.job.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { createdAt: 'desc' },
+          include: {
+            industry: true,
+            _count: {
+              select: { applications: true, views: true },
+            },
+          },
+        }),
+        prisma.job.count({ where }),
+      ]);
+
+      return {
+        jobs,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+      };
+    },
+    {
+      hasPermission: PERMISSIONS.JOBS_VIEW,
+      query: t.Object({
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+        search: t.Optional(t.String()),
+        workType: t.Optional(t.String()),
+        isPublished: t.Optional(t.String()),
+        industryId: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // Get single job by job number (admin preview - includes unpublished)
+  // Note: We need this under authMiddleware section to ensure admin check works
+  .get(
+    '/admin/number/:jobNumber',
+    async ({ params, cookie, set }) => {
+      // Verify admin/staff
+      const token = cookie.token?.value as string | undefined;
+      if (!token) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const payload = verifyToken(token);
+      if (!payload) {
+        set.status = 401;
+        return { error: 'Invalid token' };
+      }
+
+      // Check if user is admin or staff
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          roles: {
+            include: { role: true },
+          },
+        },
+      });
+
+      if (!user) {
+        set.status = 404;
+        return { error: 'User not found' };
+      }
+
+      const roles = user.roles.map((ur) => ur.role.name);
+      if (!roles.includes('admin') && !roles.includes('staff')) {
+        set.status = 403;
+        return { error: 'Access denied' };
+      }
+
+      const job = await prisma.job.findUnique({
+        where: { jobNumber: params.jobNumber },
+        include: {
+          industry: true,
+          _count: {
+            select: { applications: true, views: true },
+          },
+        },
+      });
+
+      if (!job) {
+        set.status = 404;
+        return { error: 'Job not found' };
+      }
+
+      return { job };
+    },
+    {
+      params: t.Object({
+        jobNumber: t.String(),
       }),
     }
   )

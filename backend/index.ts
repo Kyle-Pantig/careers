@@ -11,8 +11,8 @@ import { dashboardRoutes } from './src/routes/dashboard';
 import { analyticsRoutes } from './src/routes/analytics';
 
 const app = new Elysia()
-  .use(cors({ 
-    origin: 'http://localhost:3000',
+  .use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,  // Allow cookies
   }))
   .get('/', () => ({ status: 'ok', message: 'Careers API' }))

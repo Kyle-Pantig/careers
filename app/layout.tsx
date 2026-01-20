@@ -6,6 +6,9 @@ import { Toaster } from "sonner";
 import NextTopLoader from "nextjs-toploader";
 import { NavigationLoader } from "@/components/navigation-loader";
 import { ProfileCompletionDialog } from "@/components/profile-completion-dialog";
+import { GoogleAnalytics } from "@/components/shared/google-analytics";
+import { CookieConsent } from "@/components/shared/cookie-consent";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +34,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Inline CSS loader for page reloads - shows before React hydrates */}
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           #page-loader-overlay {
             position: fixed;
             top: 0;
@@ -65,7 +69,8 @@ export default function RootLayout({
             100% { background-position: -200% 0; }
           }
         `}} />
-        <script dangerouslySetInnerHTML={{ __html: `
+        <script dangerouslySetInnerHTML={{
+          __html: `
           // Create and show loader immediately
           (function() {
             // Create overlay
@@ -100,7 +105,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NextTopLoader 
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
+        <NextTopLoader
           color="#2563eb"
           initialPosition={0.08}
           crawlSpeed={200}
@@ -120,6 +128,7 @@ export default function RootLayout({
             </AuthProvider>
           </GoogleOAuthProvider>
         </QueryProvider>
+        <CookieConsent />
         <Toaster position="top-right" richColors />
       </body>
     </html>

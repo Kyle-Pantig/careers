@@ -76,7 +76,7 @@ export default function IndustryJobsPage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { user } = useAuth();
-  
+
   // Admin/staff cannot save or apply for jobs
   const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
 
@@ -90,18 +90,18 @@ export default function IndustryJobsPage() {
     setLocation: setSelectedLocation,
     clearFilters: clearStoreFilters,
   } = useIndustryJobFilters();
-  
+
   const [locationOpen, setLocationOpen] = useState(false);
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
-  
+
   // Track screen size for responsive skeleton count
   const [isLargeScreen, setIsLargeScreen] = useState(false);
-  
+
   useEffect(() => {
     const checkScreenSize = () => {
       setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint
     };
-    
+
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
@@ -110,34 +110,34 @@ export default function IndustryJobsPage() {
   // Fetch jobs and industries
   const { data: jobsData, isLoading: loadingJobs } = useJobs({ limit: 100 });
   const { data: industries = [], isLoading: loadingIndustries } = useIndustries();
-  
+
   // Saved jobs - only fetch if user is authenticated and not admin/staff
   const { data: savedJobs = [] } = useSavedJobs(!!user && !isAdminOrStaff);
   const saveJobMutation = useSaveJob();
   const unsaveJobMutation = useUnsaveJob();
-  
+
   // User applications - to check if already applied
   const { data: applicationsData } = useUserApplications(user?.id);
-  
-  // Get applied job IDs for quick lookup (jobId -> applicationId)
-  const appliedJobIds = useMemo(() => {
-    if (!applicationsData?.applications) return new Map<string, string>();
+
+  // Get applied jobs for quick lookup (jobId -> { id, status })
+  const appliedJobsMap = useMemo(() => {
+    if (!applicationsData?.applications) return new Map<string, { id: string; status: string }>();
     return new Map(
-      applicationsData.applications.map((app) => [app.jobId, app.id])
+      applicationsData.applications.map((app) => [app.jobId, { id: app.id, status: app.status }])
     );
   }, [applicationsData]);
-  
+
   // Get saved job IDs for quick lookup
   const savedJobIds = useMemo(() => {
     return new Set(savedJobs.map((sj) => sj.job.id));
   }, [savedJobs]);
-  
+
   const handleSaveJob = async (jobId: string) => {
     if (!user) {
       router.push(`/login?redirect=/jobs/industry/${slug}`);
       return;
     }
-    
+
     setSavingJobId(jobId);
     try {
       if (savedJobIds.has(jobId)) {
@@ -149,17 +149,17 @@ export default function IndustryJobsPage() {
         if (result.requiresLogin) {
           router.push(`/login?redirect=/jobs/industry/${slug}`);
         } else {
-        toast.success('Job saved successfully', {
-          action: {
-            label: 'View Saved Jobs',
-            onClick: () => router.push('/my-applications?tab=saved'),
-          },
-          actionButtonStyle: {
-            borderRadius: '9999px',
-            backgroundColor: 'hsl(var(--primary))',
-            color: 'hsl(var(--primary-foreground))',
-          },
-        });
+          toast.success('Job saved successfully', {
+            action: {
+              label: 'View Saved Jobs',
+              onClick: () => router.push('/my-applications?tab=saved'),
+            },
+            actionButtonStyle: {
+              borderRadius: '9999px',
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+            },
+          });
         }
       }
     } finally {
@@ -171,7 +171,7 @@ export default function IndustryJobsPage() {
 
   // Find industry by slug (convert slug back to name for comparison)
   const industry = useMemo(() => {
-    return industries.find((i) => 
+    return industries.find((i) =>
       i.name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase()
     );
   }, [industries, slug]);
@@ -271,13 +271,13 @@ export default function IndustryJobsPage() {
           <Skeleton className="h-5 w-96" />
         </div>
       ) : (
-        <motion.div 
+        <motion.div
           className="mb-8"
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
         >
-          <motion.div 
+          <motion.div
             className="flex items-center gap-4 mb-2"
             variants={fadeInUp}
             transition={{ duration: 0.5 }}
@@ -473,93 +473,99 @@ export default function IndustryJobsPage() {
       {/* Job Cards */}
       {!isLoading && filteredJobs.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredJobs.map((job) => (
-            <Card key={job.id} className="h-full hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg line-clamp-1">
-                      {job.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground font-mono">
-                      {job.jobNumber}
-                    </p>
-                  </div>
-                  <Button
-                    variant={savedJobIds.has(job.id) ? "default" : "outline"}
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0 rounded-full"
-                    onClick={() => handleSaveJob(job.id)}
-                    disabled={savingJobId === job.id}
-                  >
-                    {savingJobId === job.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : savedJobIds.has(job.id) ? (
-                      <BookmarkCheck className="h-4 w-4" />
-                    ) : (
-                      <Bookmark className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                {/* Location & Work Type */}
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="gap-1 text-xs">
-                    <MapPin className="h-3 w-3" />
-                    {job.location}
-                  </Badge>
-                  <Badge variant="outline" className="gap-1 text-xs">
-                    <Briefcase className="h-3 w-3" />
-                    {WORK_TYPE_LABELS[job.workType]}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {JOB_TYPE_LABELS[job.jobType]}
-                  </Badge>
-                  <Badge variant="outline" className="gap-1 text-xs">
-                    <Clock className="h-3 w-3" />
-                    {SHIFT_TYPE_LABELS[job.shiftType]}
-                  </Badge>
-                </div>
+          {filteredJobs.map((job) => {
+            const existingApp = appliedJobsMap.get(job.id);
+            const isRejected = existingApp?.status.toLowerCase() === 'rejected' || existingApp?.status.toLowerCase() === 'not_selected';
+            const hasActiveApp = !!existingApp && !isRejected;
 
-                {/* Posted Date */}
-                {job.publishedAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Posted {formatTimeAgo(job.publishedAt)}
-                  </p>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" asChild className="flex-1 rounded-full">
-                    <Link href={`/jobs/${job.jobNumber}`}>
-                      View Details
-                    </Link>
-                  </Button>
-                  {/* Expired shown for all, Apply/View Application hidden for admin/staff */}
-                  {isJobExpired(job.expiresAt) ? (
-                    <Button size="sm" variant="destructive" className="flex-1 rounded-full" disabled>
-                      Expired
+            return (
+              <Card key={job.id} className="h-full hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg line-clamp-1">
+                        {job.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {job.jobNumber}
+                      </p>
+                    </div>
+                    <Button
+                      variant={savedJobIds.has(job.id) ? "default" : "outline"}
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0 rounded-full"
+                      onClick={() => handleSaveJob(job.id)}
+                      disabled={savingJobId === job.id}
+                    >
+                      {savingJobId === job.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : savedJobIds.has(job.id) ? (
+                        <BookmarkCheck className="h-4 w-4" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
                     </Button>
-                  ) : !isAdminOrStaff && (
-                    appliedJobIds.has(job.id) ? (
-                      <Button size="sm" variant="secondary" className="flex-1 rounded-full" asChild>
-                        <Link href={`/my-applications/${appliedJobIds.get(job.id)}`}>
-                          View Application
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button size="sm" className="flex-1 rounded-full" asChild>
-                        <Link href={`/jobs/${job.jobNumber}/apply`}>
-                          Apply
-                        </Link>
-                      </Button>
-                    )
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-4">
+                  {/* Location & Work Type */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <MapPin className="h-3 w-3" />
+                      {job.location}
+                    </Badge>
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <Briefcase className="h-3 w-3" />
+                      {WORK_TYPE_LABELS[job.workType]}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {JOB_TYPE_LABELS[job.jobType]}
+                    </Badge>
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <Clock className="h-3 w-3" />
+                      {SHIFT_TYPE_LABELS[job.shiftType]}
+                    </Badge>
+                  </div>
+
+                  {/* Posted Date */}
+                  {job.publishedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Posted {formatTimeAgo(job.publishedAt)}
+                    </p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" asChild className="flex-1 rounded-full">
+                      <Link href={`/jobs/${job.jobNumber}`}>
+                        View Details
+                      </Link>
+                    </Button>
+                    {/* Expired shown for all, Apply/View Application hidden for admin/staff */}
+                    {isJobExpired(job.expiresAt) ? (
+                      <Button size="sm" variant="destructive" className="flex-1 rounded-full" disabled>
+                        Expired
+                      </Button>
+                    ) : !isAdminOrStaff && (
+                      hasActiveApp ? (
+                        <Button size="sm" variant="secondary" className="flex-1 rounded-full" asChild>
+                          <Link href={`/my-applications/${existingApp.id}`}>
+                            View Application
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button size="sm" className="flex-1 rounded-full" asChild>
+                          <Link href={`/jobs/${job.jobNumber}/apply`}>
+                            Apply
+                          </Link>
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </MaxWidthLayout>

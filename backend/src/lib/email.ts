@@ -6,12 +6,12 @@ const prisma = new PrismaClient();
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@yourdomain.com';
 const FROM_NAME = process.env.FROM_NAME || 'Careers Platform';
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 const FROM = `${FROM_NAME} <${FROM_EMAIL}>`;
 
 // Email template types matching the database enum
-type DbEmailTemplateType = 
+type DbEmailTemplateType =
   | 'APPLICATION_CONFIRMATION'
   | 'APPLICATION_REVIEWED'
   | 'APPLICATION_REJECTION'
@@ -25,7 +25,7 @@ async function getEmailTemplateFromDb(type: DbEmailTemplateType): Promise<{ subj
     const template = await (prisma as any).$queryRaw`
       SELECT subject, body, "isActive" FROM email_templates WHERE type = ${type}::"EmailTemplateType"
     `;
-    
+
     if (template && (template as any[]).length > 0 && (template as any[])[0].isActive) {
       return {
         subject: (template as any[])[0].subject,
@@ -98,7 +98,7 @@ function emailTemplate(content: string) {
 }
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
+  const verifyUrl = `${FRONTEND_URL}/verify-email?token=${token}`;
 
   const content = `
     <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b; text-align: center;">
@@ -143,7 +143,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
 
   const content = `
     <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b; text-align: center;">
@@ -194,7 +194,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 }
 
 export async function sendMagicLinkEmail(email: string, token: string) {
-  const loginUrl = `${APP_URL}/auth/magic-link?token=${token}`;
+  const loginUrl = `${FRONTEND_URL}/auth/magic-link?token=${token}`;
 
   const content = `
     <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b; text-align: center;">
@@ -253,11 +253,11 @@ export interface ApplicationConfirmationData {
 }
 
 export async function sendApplicationConfirmationEmail(data: ApplicationConfirmationData) {
-  const jobUrl = `${APP_URL}/jobs/${data.jobNumber}`;
+  const jobUrl = `${FRONTEND_URL}/jobs/${data.jobNumber}`;
 
   // Try to get template from database
   const dbTemplate = await getEmailTemplateFromDb('APPLICATION_CONFIRMATION');
-  
+
   let subject: string;
   let content: string;
 
@@ -405,7 +405,7 @@ interface TemplateEmailData {
 export async function sendTemplateEmail(data: TemplateEmailData) {
   let subject = '';
   let content = '';
-  
+
   // Map template types to database enum types
   const dbTemplateTypeMap: Record<EmailTemplateType, DbEmailTemplateType> = {
     'interview_invitation': 'INTERVIEW_INVITATION',
@@ -422,13 +422,13 @@ export async function sendTemplateEmail(data: TemplateEmailData) {
   const periodLabels: Record<string, string> = {
     'HOURLY': 'per hour', 'MONTHLY': 'per month', 'YEARLY': 'per year',
   };
-  const salaryDisplay = data.customData?.salaryAmount 
+  const salaryDisplay = data.customData?.salaryAmount
     ? `${currencySymbols[data.customData?.salaryCurrency || 'PHP'] || '₱'}${Number(data.customData?.salaryAmount).toLocaleString()} ${periodLabels[data.customData?.salaryPeriod || 'MONTHLY'] || 'per month'}`
     : '';
 
   // Try to get template from database
   const dbTemplate = await getEmailTemplateFromDb(dbTemplateTypeMap[data.templateType]);
-  
+
   if (dbTemplate) {
     // Use database template with placeholder replacement
     const placeholderData: Record<string, string> = {
@@ -452,13 +452,13 @@ export async function sendTemplateEmail(data: TemplateEmailData) {
         Dear ${data.toName},
       </p>
     `;
-    
+
     const jobInfo = `
       <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a;">
         Position: <strong style="color: #18181b;">${data.jobTitle}</strong> (${data.jobNumber})
       </p>
     `;
-    
+
     const footer = `
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
         <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center; line-height: 1.6;">
@@ -583,9 +583,9 @@ export async function sendTemplateEmail(data: TemplateEmailData) {
 
       case 'offer':
         subject = `Job Offer - ${data.jobTitle}`;
-        
+
         const hasSalary = data.customData?.salaryAmount;
-        
+
         content = `
           <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b;">
             Congratulations! 🎉
@@ -686,7 +686,7 @@ interface ApplicationReviewedData {
 export async function sendApplicationReviewedEmail(data: ApplicationReviewedData) {
   // Try to get template from database
   const dbTemplate = await getEmailTemplateFromDb('APPLICATION_REVIEWED');
-  
+
   let subject: string;
   let content: string;
 
@@ -764,8 +764,8 @@ interface UserInvitationData {
 }
 
 export async function sendUserInvitationEmail(data: UserInvitationData) {
-  const acceptUrl = `${APP_URL}/accept-invitation?token=${data.token}`;
-  
+  const acceptUrl = `${FRONTEND_URL}/accept-invitation?token=${data.token}`;
+
   const roleDisplay = data.role === 'admin' ? 'Administrator' : 'Staff Member';
   const roleColor = data.role === 'admin' ? '#dc2626' : '#2563eb';
   const roleBgColor = data.role === 'admin' ? '#fef2f2' : '#eff6ff';
@@ -841,7 +841,7 @@ export async function sendUserInvitationEmail(data: UserInvitationData) {
 export async function sendApplicationRejectionEmail(data: ApplicationRejectionData) {
   // Try to get template from database
   const dbTemplate = await getEmailTemplateFromDb('APPLICATION_REJECTION');
-  
+
   let subject: string;
   let content: string;
 

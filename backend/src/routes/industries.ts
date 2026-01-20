@@ -1,25 +1,18 @@
 import { Elysia, t } from 'elysia';
 import { prisma } from '../lib/prisma';
+import { authMiddleware } from '../middleware/auth';
 
 export const industryRoutes = new Elysia({ prefix: '/industries' })
+  // =========================================================
+  // PUBLIC ROUTES
+  // =========================================================
+
   // Get all industries (public - only active)
   .get(
     '/',
     async () => {
       const industries = await prisma.industry.findMany({
         where: { isActive: true },
-        orderBy: { name: 'asc' },
-      });
-
-      return { industries };
-    }
-  )
-
-  // Get all industries (admin - includes inactive)
-  .get(
-    '/admin',
-    async () => {
-      const industries = await prisma.industry.findMany({
         orderBy: { name: 'asc' },
         include: {
           _count: {
@@ -56,6 +49,28 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
       params: t.Object({
         id: t.String(),
       }),
+    }
+  )
+
+  // =========================================================
+  // PROTECTED ROUTES
+  // =========================================================
+  .use(authMiddleware)
+
+  // Get all industries (admin - includes inactive)
+  .get(
+    '/admin',
+    async () => {
+      const industries = await prisma.industry.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          _count: {
+            select: { jobs: true },
+          },
+        },
+      });
+
+      return { industries };
     }
   )
 
@@ -161,8 +176,8 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
       // Prevent deletion if there are jobs using this industry
       if (existing._count.jobs > 0) {
         set.status = 400;
-        return { 
-          error: `Cannot delete industry with ${existing._count.jobs} associated jobs. Please reassign or delete those jobs first.` 
+        return {
+          error: `Cannot delete industry with ${existing._count.jobs} associated jobs. Please reassign or delete those jobs first.`
         };
       }
 
@@ -199,9 +214,9 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
         },
       });
 
-      return { 
-        industry, 
-        message: industry.isActive ? 'Industry activated' : 'Industry deactivated' 
+      return {
+        industry,
+        message: industry.isActive ? 'Industry activated' : 'Industry deactivated'
       };
     },
     {

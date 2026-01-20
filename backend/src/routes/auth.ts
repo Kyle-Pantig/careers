@@ -264,10 +264,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       if (recentToken) {
         const timeSinceLastRequest = Date.now() - recentToken.createdAt.getTime();
         const cooldownRemaining = Math.ceil((EMAIL_COOLDOWN_SECONDS * 1000 - timeSinceLastRequest) / 1000);
-        
+
         if (cooldownRemaining > 0) {
           set.status = 429;
-          return { 
+          return {
             error: `Please wait ${cooldownRemaining} seconds before requesting another verification email.`,
             cooldown: cooldownRemaining
           };
@@ -327,10 +327,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       if (recentToken) {
         const timeSinceLastRequest = Date.now() - recentToken.createdAt.getTime();
         const cooldownRemaining = Math.ceil((EMAIL_COOLDOWN_SECONDS * 1000 - timeSinceLastRequest) / 1000);
-        
+
         if (cooldownRemaining > 0) {
           set.status = 429;
-          return { 
+          return {
             error: `Please wait ${cooldownRemaining} seconds before requesting another password reset.`,
             cooldown: cooldownRemaining
           };
@@ -440,10 +440,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
       if (recentToken) {
         const timeSinceLastRequest = Date.now() - recentToken.createdAt.getTime();
         const cooldownRemaining = Math.ceil((EMAIL_COOLDOWN_SECONDS * 1000 - timeSinceLastRequest) / 1000);
-        
+
         if (cooldownRemaining > 0) {
           set.status = 429;
-          return { 
+          return {
             error: `Please wait ${cooldownRemaining} seconds before requesting another sign-in link.`,
             cooldown: cooldownRemaining
           };
@@ -588,18 +588,16 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Get current user (from cookie)
   .get('/me', async ({ cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
-      set.status = 401;
-      return { error: 'Unauthorized' };
+      return { user: null };
     }
 
     const payload = verifyToken(token as string);
 
     if (!payload) {
       cookie.token.set({ value: '', maxAge: 0 });
-      set.status = 401;
-      return { error: 'Invalid token' };
+      return { user: null };
     }
 
     const user = await prisma.user.findUnique({
@@ -619,10 +617,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     // Get permission level for staff users
     const isAdmin = user.roles.some((ur: { role: { name: string } }) => ur.role.name === 'admin');
     const staffRole = user.roles.find((ur: { role: { name: string } }) => ur.role.name === 'staff');
-    
+
     // Check if user is the super admin (primary admin from env)
     const isSuperAdmin = isAdmin && user.email === process.env.ADMIN_EMAIL;
-    
+
     // Determine permission level:
     // - Admin: 'canEdit' (full access)
     // - Staff: their assigned permissionLevel ('canEdit' or 'canRead')
@@ -656,7 +654,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Update current user profile
   .patch('/me', async ({ body, cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };
@@ -713,7 +711,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Upload user resume
   .post('/me/resume', async ({ body, cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };
@@ -806,7 +804,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Delete user resume
   .delete('/me/resume', async ({ cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };
@@ -878,7 +876,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Change password
   .post('/me/change-password', async ({ body, cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };
@@ -945,7 +943,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Set password for OAuth-only users (no existing password)
   .post('/me/set-password', async ({ body, cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };
@@ -1409,7 +1407,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   // Get linked accounts for current user
   .get('/me/accounts', async ({ cookie, set }) => {
     const token = cookie.token?.value;
-    
+
     if (!token) {
       set.status = 401;
       return { error: 'Unauthorized' };

@@ -23,6 +23,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -39,6 +45,23 @@ import { jobSchema, type JobFormData, type CustomApplicationField, type CustomFi
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
+const SUGGESTED_FIELDS = [
+  { label: 'Current Salary', type: 'text', required: true },
+  { label: 'Expected Salary', type: 'text', required: true },
+  { label: 'Are you currently employed?', type: 'select', required: true, options: ['Yes', 'No'] },
+  {
+    label: 'Notice Period',
+    type: 'select',
+    required: true,
+    options: ['Immediately', '7 Days', '14 Days', '30 Days', '60 Days', '90 Days']
+  },
+  { label: 'LinkedIn Profile URL', type: 'text', required: false },
+  { label: 'Portfolio / Website', type: 'text', required: false },
+  { label: 'Why do you want to join us?', type: 'textarea', required: true },
+  { label: 'Are you willing to relocate?', type: 'select', required: true, options: ['Yes', 'No'] },
+  { label: 'How did you hear about us?', type: 'text', required: false },
+];
+
 interface JobFormProps {
   job?: Job;
   mode: 'create' | 'edit';
@@ -47,7 +70,7 @@ interface JobFormProps {
 export function JobForm({ job, mode }: JobFormProps) {
   const router = useRouter();
   const [industryOpen, setIndustryOpen] = useState(false);
-  
+
   // React Query hooks
   const { data: industries = [], isLoading: loadingIndustries } = useIndustries();
   const createMutation = useCreateJob();
@@ -344,9 +367,9 @@ export function JobForm({ job, mode }: JobFormProps) {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {watchExperienceMax 
+                    {watchExperienceMax
                       ? `${watchExperienceMin}-${watchExperienceMax} years experience`
-                      : watchExperienceMin > 0 
+                      : watchExperienceMin > 0
                         ? `${watchExperienceMin}+ years experience`
                         : 'Entry level / No experience required'}
                   </p>
@@ -465,17 +488,47 @@ export function JobForm({ job, mode }: JobFormProps) {
                     )}
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ key: `field_${fields.length + 1}`, label: '', type: 'text', required: false })}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add custom field
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => append({ key: `field_${fields.length + 1}`, label: '', type: 'text', required: false })}
+                    disabled={isLoading}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add custom field
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" disabled={isLoading}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add from template
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                      {SUGGESTED_FIELDS.map((field) => (
+                        <DropdownMenuItem
+                          key={field.label}
+                          onClick={() => {
+                            // Generate a unique key based on the label
+                            const baseKey = field.label.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                            // Check if key exists to avoid duplicates (simple check, or just append with unique suffix if needed, but here simple is fine or let user edit)
+                            append({
+                              key: baseKey,
+                              label: field.label,
+                              type: field.type as CustomFieldType,
+                              required: field.required,
+                              options: field.options
+                            });
+                          }}
+                        >
+                          {field.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 {errors.customApplicationFields && (
                   <p className="text-destructive text-sm">{errors.customApplicationFields.message}</p>
                 )}
@@ -523,8 +576,8 @@ export function JobForm({ job, mode }: JobFormProps) {
                             {industries.length === 0 ? (
                               <div className="py-6 text-center text-sm">
                                 No industries available.{' '}
-                                <Link 
-                                  href="/dashboard/industries" 
+                                <Link
+                                  href="/dashboard/industries"
                                   className="text-primary underline"
                                   onClick={() => setIndustryOpen(false)}
                                 >
@@ -665,10 +718,10 @@ export function JobForm({ job, mode }: JobFormProps) {
                   {watchSalaryMin && watchSalaryMax
                     ? `${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMin.toLocaleString()} - ${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMax.toLocaleString()} ${SALARY_PERIOD_LABELS[watchSalaryPeriod]}`
                     : watchSalaryMin
-                    ? `From ${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMin.toLocaleString()} ${SALARY_PERIOD_LABELS[watchSalaryPeriod]}`
-                    : watchSalaryMax
-                    ? `Up to ${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMax.toLocaleString()} ${SALARY_PERIOD_LABELS[watchSalaryPeriod]}`
-                    : 'Salary not specified'}
+                      ? `From ${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMin.toLocaleString()} ${SALARY_PERIOD_LABELS[watchSalaryPeriod]}`
+                      : watchSalaryMax
+                        ? `Up to ${CURRENCY_SYMBOLS[watchSalaryCurrency]}${watchSalaryMax.toLocaleString()} ${SALARY_PERIOD_LABELS[watchSalaryPeriod]}`
+                        : 'Salary not specified'}
                 </p>
                 {errors.salaryMin && (
                   <p className="text-destructive text-sm">{errors.salaryMin.message}</p>
