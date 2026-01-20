@@ -200,7 +200,12 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
   // Logout
   .post('/logout', ({ cookie }) => {
-    cookie.token.set({ value: '', maxAge: 0 });
+    // Must use same options as when setting the cookie for it to be properly cleared
+    cookie.token.set({
+      value: '',
+      ...COOKIE_OPTIONS,
+      maxAge: 0
+    });
     return { message: 'You have been signed out successfully.' };
   })
 

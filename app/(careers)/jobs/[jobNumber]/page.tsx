@@ -72,7 +72,7 @@ export default function JobDetailPage() {
   const jobNumber = params.jobNumber as string;
 
   const { data: job, isLoading, isError } = useJobByNumber(jobNumber);
-  
+
   // Saved job functionality - only check if user is authenticated
   const { data: isSaved = false } = useCheckJobSaved(job?.id || '', !!user && !isAdminOrStaff);
   const saveJobMutation = useSaveJob();
@@ -81,13 +81,13 @@ export default function JobDetailPage() {
 
   const handleToggleSave = async () => {
     if (!job) return;
-    
+
     if (!user) {
       // Redirect to login
       router.push(`/login?redirect=/jobs/${jobNumber}`);
       return;
     }
-    
+
     if (isSaved) {
       await unsaveJobMutation.mutateAsync(job.id);
     } else {
@@ -221,7 +221,7 @@ export default function JobDetailPage() {
   return (
     <MaxWidthLayout className="py-8">
       {/* Back Button */}
-      <motion.div 
+      <motion.div
         className="mb-6"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -236,13 +236,13 @@ export default function JobDetailPage() {
       </motion.div>
 
       {/* Header */}
-      <motion.div 
-        className="mb-8"
+      <motion.div
+        className="mb-5"
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <motion.div variants={fadeInUp} transition={{ duration: 0.5 }}>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="gap-1">
@@ -252,8 +252,8 @@ export default function JobDetailPage() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight mb-2">{job.title}</h1>
           </motion.div>
-          <motion.div 
-            className="flex gap-2"
+          <motion.div
+            className="flex gap-2 justify-end"
             variants={fadeIn}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
@@ -262,10 +262,10 @@ export default function JobDetailPage() {
             </Button>
             {/* Save button - hidden for admin/staff */}
             {!isAdminOrStaff && (
-              <Button 
-                variant={isSaved ? "default" : "outline"} 
-                size="icon" 
-                className="rounded-full" 
+              <Button
+                variant={isSaved ? "default" : "outline"}
+                size="icon"
+                className="rounded-full"
                 onClick={handleToggleSave}
                 disabled={isSaving}
               >
@@ -285,7 +285,7 @@ export default function JobDetailPage() {
       {/* Content */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Content */}
-        <motion.div 
+        <motion.div
           className="lg:col-span-2 space-y-6 order-2 lg:order-1"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -318,7 +318,7 @@ export default function JobDetailPage() {
         </motion.div>
 
         {/* Sidebar */}
-        <motion.div 
+        <motion.div
           className="space-y-6 order-1 lg:order-2"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -399,7 +399,7 @@ export default function JobDetailPage() {
                       {user ? (
                         <p className="text-sm text-muted-foreground">{formatSalary()}</p>
                       ) : (
-                        <Link 
+                        <Link
                           href={`/login?redirect=/jobs/${job.jobNumber}`}
                           className="text-sm text-primary hover:underline"
                         >
@@ -427,26 +427,26 @@ export default function JobDetailPage() {
       {/* Apply Button - Bottom */}
       {/* Admin/staff can see Expired status but cannot Apply */}
       {(isJobExpired || !isAdminOrStaff) && (
-        <motion.div 
-          id="apply" 
+        <motion.div
+          id="apply"
           className="mt-8 lg:max-w-xs lg:mx-auto"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           {isJobExpired ? (
-            <Button 
+            <Button
               variant="destructive"
-              className="w-full rounded-full" 
+              className="w-full rounded-full"
               size="lg"
               disabled
             >
               Expired
             </Button>
           ) : hasApplied && applicationId ? (
-            <Button 
+            <Button
               variant="secondary"
-              className="w-full rounded-full" 
+              className="w-full rounded-full"
               size="lg"
               asChild
             >
@@ -456,8 +456,8 @@ export default function JobDetailPage() {
               </Link>
             </Button>
           ) : (
-            <Button 
-              className="w-full rounded-full" 
+            <Button
+              className="w-full rounded-full"
               size="lg"
               asChild
             >
