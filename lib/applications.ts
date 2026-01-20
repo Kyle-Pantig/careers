@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET_TOKEN || '';
 
 export interface ApplicationData {
   jobNumber: string;
@@ -82,6 +83,9 @@ export async function submitApplication(data: ApplicationData): Promise<Applicat
   const res = await fetch(`${API_URL}/applications`, {
     method: 'POST',
     credentials: 'include',
+    headers: {
+      'x-api-secret': API_SECRET,
+    },
     body: formData,
   });
 
@@ -105,6 +109,9 @@ export async function checkApplicationStatus(
 
   const res = await fetch(`${API_URL}/applications/check/${jobNumber}?${params}`, {
     credentials: 'include',
+    headers: {
+      'x-api-secret': API_SECRET,
+    },
   });
 
   const result = await res.json();

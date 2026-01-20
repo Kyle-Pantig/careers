@@ -3,13 +3,13 @@ import { prisma } from '../lib/prisma';
 import { uploadResume } from '../lib/storage';
 import { authMiddleware } from '../middleware/auth';
 import { PERMISSIONS } from '../../../shared/validators/permissions';
-import { 
-  sendApplicationConfirmationEmail, 
-  sendCustomEmail, 
-  sendTemplateEmail, 
+import {
+  sendApplicationConfirmationEmail,
+  sendCustomEmail,
+  sendTemplateEmail,
   sendApplicationReviewedEmail,
   sendApplicationRejectionEmail,
-  type EmailTemplateType 
+  type EmailTemplateType
 } from '../lib/email';
 
 export const applicationRoutes = new Elysia({ prefix: '/applications' })
@@ -194,6 +194,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       };
     },
     {
+      verifyApiSecret: true,
       body: t.Object({
         jobNumber: t.String({ minLength: 1 }),
         firstName: t.String({ minLength: 1 }),
@@ -424,7 +425,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
       const [applications, total] = await Promise.all([
-prisma.jobApplication.findMany({
+        prisma.jobApplication.findMany({
           where: { userId: params.userId },
           skip,
           take: parseInt(limit),
@@ -572,10 +573,10 @@ prisma.jobApplication.findMany({
       const appData = application as typeof application & { email: string; userId: string | null };
       const userData = user as { userId?: string; email?: string } | null;
       const isOwner = userData && (
-        appData.userId === userData.userId || 
+        appData.userId === userData.userId ||
         appData.email === userData.email
       );
-      
+
       if (!isOwner) {
         set.status = 403;
         return { error: 'You do not have permission to view this application' };
@@ -617,13 +618,13 @@ prisma.jobApplication.findMany({
             },
           },
         },
-      }) as { 
-        id: string; 
-        email: string; 
-        firstName: string; 
-        lastName: string; 
+      }) as {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
         status: string;
-        job: { title: string; jobNumber: string } 
+        job: { title: string; jobNumber: string }
       };
 
       // Send automatic status update emails
@@ -812,14 +813,15 @@ prisma.jobApplication.findMany({
         hasApplied: !!application,
         application: application
           ? {
-              id: application.id,
-              status: application.status,
-              createdAt: application.createdAt,
-            }
+            id: application.id,
+            status: application.status,
+            createdAt: application.createdAt,
+          }
           : null,
       };
     },
     {
+      verifyApiSecret: true,
       params: t.Object({
         jobNumber: t.String(),
       }),

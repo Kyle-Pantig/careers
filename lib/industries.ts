@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET_TOKEN || '';
 
 export interface Industry {
   id: string;
@@ -27,6 +28,9 @@ export interface UpdateIndustryData extends CreateIndustryData {
 export async function getIndustries(): Promise<{ industries: Industry[] }> {
   const res = await fetch(`${API_URL}/industries`, {
     credentials: 'include',
+    headers: {
+      'x-api-secret': API_SECRET,
+    },
   });
 
   if (!res.ok) {
@@ -53,6 +57,9 @@ export async function getAdminIndustries(): Promise<{ industries: Industry[] }> 
 export async function getIndustry(id: string): Promise<{ industry: Industry }> {
   const res = await fetch(`${API_URL}/industries/${id}`, {
     credentials: 'include',
+    headers: {
+      'x-api-secret': API_SECRET,
+    },
   });
 
   const result = await res.json();

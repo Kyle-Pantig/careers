@@ -3,8 +3,9 @@ import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 
 export const industryRoutes = new Elysia({ prefix: '/industries' })
+  .use(authMiddleware)
   // =========================================================
-  // PUBLIC ROUTES
+  // PUBLIC ROUTES (Secured by API Secret)
   // =========================================================
 
   // Get all industries (public - only active)
@@ -22,6 +23,9 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
       });
 
       return { industries };
+    },
+    {
+      verifyApiSecret: true,
     }
   )
 
@@ -46,6 +50,7 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
       return { industry };
     },
     {
+      verifyApiSecret: true,
       params: t.Object({
         id: t.String(),
       }),
@@ -55,7 +60,7 @@ export const industryRoutes = new Elysia({ prefix: '/industries' })
   // =========================================================
   // PROTECTED ROUTES
   // =========================================================
-  .use(authMiddleware)
+  // .use(authMiddleware) moved to top
 
   // Get all industries (admin - includes inactive)
   .get(

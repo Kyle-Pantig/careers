@@ -46,7 +46,7 @@ async function getUserPermissionLevel(userId: string): Promise<{
 export const authMiddleware = new Elysia({ name: 'auth-middleware' })
   .derive({ as: 'global' }, ({ cookie }) => {
     const token = cookie.token?.value as string | undefined;
-    
+
     if (!token) {
       return { user: null };
     }
@@ -106,7 +106,7 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
         }
 
         const { permissionLevel } = await getUserPermissionLevel(user.userId);
-        
+
         if (!checkPermissionByLevel(permissionLevel, permission)) {
           set.status = 403;
           return { error: 'Forbidden: You do not have permission to perform this action' };
@@ -127,7 +127,7 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
         }
 
         const { permissionLevel } = await getUserPermissionLevel(user.userId);
-        
+
         if (permissionLevel !== STAFF_PERMISSION_LEVELS.CAN_EDIT) {
           set.status = 403;
           return { error: 'Forbidden: You need edit permissions to perform this action' };
@@ -147,7 +147,7 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
         }
 
         const { permissionLevel } = await getUserPermissionLevel(user.userId);
-        
+
         // canRead is satisfied by either canRead or canEdit
         if (
           permissionLevel !== STAFF_PERMISSION_LEVELS.CAN_READ &&
@@ -155,6 +155,27 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
         ) {
           set.status = 403;
           return { error: 'Forbidden: You need read permissions to perform this action' };
+        }
+      },
+    }),
+    // Verify API Secret for public routes
+    verifyApiSecret: () => ({
+      beforeHandle: ({ request, set }) => {
+        const secret = request.headers.get('x-api-secret');
+        const envSecret = process.env.API_SECRET_TOKEN;
+
+        // If env var is not set, we might want to log a warning but proceed 
+        // OR block. Given the user explicitly asked for security, blocking is safer,
+        // but might break dev if they forget. I'll block.
+        if (!envSecret) {
+          console.error('missing in server environment');
+          set.status = 500;
+          return { error: 'Server configuration error' };
+        }
+
+        if (secret !== envSecret) {
+          set.status = 401;
+          return { error: 'Unauthorized Access' };
         }
       },
     }),
