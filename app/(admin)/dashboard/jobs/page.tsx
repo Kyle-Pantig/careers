@@ -30,13 +30,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Plus, 
-  Search, 
-  MoreHorizontal, 
-  Pencil, 
-  Trash2, 
-  Eye, 
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Eye,
   EyeOff,
   Loader2,
   Briefcase,
@@ -45,6 +45,16 @@ import {
   ArrowDown,
   Check,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
   useReactTable,
@@ -70,6 +80,8 @@ export default function JobsPage() {
   const [togglingJobId, setTogglingJobId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const limit = 10;
 
   // React Query hooks
@@ -280,7 +292,7 @@ export default function JobsPage() {
               {hasPermission(PERMISSIONS.JOBS_PUBLISH) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleTogglePublish(job.id)}
                     disabled={togglePublishMutation.isPending}
                   >
@@ -341,12 +353,19 @@ export default function JobsPage() {
     setSearchQuery(search);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+  const handleDelete = (id: string) => {
+    setJobToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const onDeleteConfirm = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!jobToDelete) return;
 
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync(jobToDelete);
       toast.success('Job deleted successfully');
+      setDeleteDialogOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete job');
     }
@@ -389,7 +408,7 @@ export default function JobsPage() {
             Manage job postings and their visibility
           </p>
         </div>
-{hasPermission(PERMISSIONS.JOBS_CREATE) && (
+        {hasPermission(PERMISSIONS.JOBS_CREATE) && (
           <Button asChild>
             <Link href="/dashboard/jobs/new">
               <Plus className="mr-2 h-4 w-4" />
@@ -456,7 +475,7 @@ export default function JobsPage() {
               <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">No jobs found</h3>
               <p className="text-muted-foreground mb-4">
-                {hasPermission(PERMISSIONS.JOBS_CREATE) 
+                {hasPermission(PERMISSIONS.JOBS_CREATE)
                   ? 'Get started by creating your first job posting.'
                   : 'No job postings available.'}
               </p>
@@ -476,15 +495,15 @@ export default function JobsPage() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead 
+                        <TableHead
                           key={header.id}
                           className={
                             header.id === 'industry' ? 'hidden md:table-cell' :
-                            header.id === 'location' ? 'hidden lg:table-cell' :
-                            header.id === 'applications' ? 'hidden sm:table-cell text-center' :
-                            header.id === 'createdAt' ? 'hidden lg:table-cell' :
-                            header.id === 'actions' ? 'w-[50px]' :
-                            header.id === 'title' ? 'min-w-[180px]' : ''
+                              header.id === 'location' ? 'hidden lg:table-cell' :
+                                header.id === 'applications' ? 'hidden sm:table-cell text-center' :
+                                  header.id === 'createdAt' ? 'hidden lg:table-cell' :
+                                    header.id === 'actions' ? 'w-[50px]' :
+                                      header.id === 'title' ? 'min-w-[180px]' : ''
                           }
                         >
                           {header.isPlaceholder
@@ -499,13 +518,13 @@ export default function JobsPage() {
                   {table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell 
+                        <TableCell
                           key={cell.id}
                           className={
                             cell.column.id === 'industry' ? 'hidden md:table-cell' :
-                            cell.column.id === 'location' ? 'hidden lg:table-cell' :
-                            cell.column.id === 'applications' ? 'hidden sm:table-cell text-center' :
-                            cell.column.id === 'createdAt' ? 'hidden lg:table-cell' : ''
+                              cell.column.id === 'location' ? 'hidden lg:table-cell' :
+                                cell.column.id === 'applications' ? 'hidden sm:table-cell text-center' :
+                                  cell.column.id === 'createdAt' ? 'hidden lg:table-cell' : ''
                           }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -549,6 +568,35 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the job posting
+              and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onDeleteConfirm}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
