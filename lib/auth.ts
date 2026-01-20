@@ -11,7 +11,7 @@ export interface User {
   resumeUrl?: string | null;
   resumeFileName?: string | null;
   resumeUploadedAt?: string | null;
-  roles: string[];
+  roles: (string | { id?: string; name?: string; role?: { name: string } })[];
   // Simplified permission level: 'canEdit' (full access) or 'canRead' (view only)
   permissionLevel?: string | null;
   // Whether this user is the super admin (primary admin from env)
@@ -31,7 +31,7 @@ export interface AuthResponse {
 // Custom error class to include cooldown information
 export class CooldownError extends Error {
   cooldown: number;
-  
+
   constructor(message: string, cooldown: number) {
     super(message);
     this.name = 'CooldownError';
@@ -60,7 +60,7 @@ export async function register(data: RegisterData): Promise<{ message: string; u
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Registration failed');
   }
@@ -77,7 +77,7 @@ export async function login(data: LoginData): Promise<AuthResponse> {
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Login failed');
   }
@@ -118,7 +118,7 @@ export async function verifyEmail(token: string): Promise<{ message: string }> {
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Verification failed');
   }
@@ -135,7 +135,7 @@ export async function resendVerificationEmail(email: string): Promise<{ message:
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     if (res.status === 429 && result.cooldown) {
       throw new CooldownError(result.error, result.cooldown);
@@ -155,7 +155,7 @@ export async function forgotPassword(email: string): Promise<{ message: string; 
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     if (res.status === 429 && result.cooldown) {
       throw new CooldownError(result.error, result.cooldown);
@@ -175,7 +175,7 @@ export async function resetPassword(token: string, password: string): Promise<{ 
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Reset failed');
   }
@@ -192,7 +192,7 @@ export async function requestMagicLink(email: string): Promise<{ message: string
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     if (res.status === 429 && result.cooldown) {
       throw new CooldownError(result.error, result.cooldown);
@@ -212,7 +212,7 @@ export async function verifyMagicLink(token: string): Promise<AuthResponse> {
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Verification failed');
   }
@@ -236,7 +236,7 @@ export async function updateProfile(data: UpdateProfileData): Promise<{ message:
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to update profile');
   }
@@ -255,7 +255,7 @@ export async function uploadResume(file: File): Promise<{ message: string; user:
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to upload resume');
   }
@@ -270,7 +270,7 @@ export async function deleteResume(): Promise<{ message: string; user: User }> {
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to delete resume');
   }
@@ -292,7 +292,7 @@ export async function changePassword(data: ChangePasswordData): Promise<{ messag
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to change password');
   }
@@ -310,7 +310,7 @@ export async function setPassword(password: string): Promise<{ message: string }
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to set password');
   }
@@ -348,12 +348,12 @@ export async function googleAuth(credential: string): Promise<GoogleAuthResponse
   });
 
   const result = await res.json();
-  
+
   // 409 means account exists and requires linking
   if (res.status === 409 && result.requiresLink) {
     return result as GoogleAuthLinkRequired;
   }
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Google authentication failed');
   }
@@ -371,7 +371,7 @@ export async function confirmAccountLink(token: string, password: string): Promi
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to verify password');
   }
@@ -392,7 +392,7 @@ export async function completeAccountLink(data: {
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to link account');
   }
@@ -407,7 +407,7 @@ export async function getLinkedAccounts(): Promise<{ accounts: LinkedAccount[]; 
   });
 
   const result = await res.json();
-  
+
   if (!res.ok) {
     throw new Error(result.error || 'Failed to get linked accounts');
   }

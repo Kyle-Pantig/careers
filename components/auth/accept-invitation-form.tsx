@@ -80,7 +80,7 @@ export function AcceptInvitationForm({
 
       try {
         const result = await verifyInvitation(token);
-        
+
         if (result.valid) {
           setIsValid(true);
           setEmail(result.email || '');
@@ -112,10 +112,10 @@ export function AcceptInvitationForm({
 
       setIsSuccess(true);
       toast.success('Account set up successfully!');
-      
+
       // Refresh user context and redirect to dashboard
       await refreshUser();
-      
+
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
@@ -200,8 +200,8 @@ export function AcceptInvitationForm({
   // Form state
   const roleDisplay = role === 'admin' ? 'Administrator' : 'Staff Member';
   const RoleIcon = role === 'admin' ? Shield : UserCog;
-  const roleColor = role === 'admin' 
-    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' 
+  const roleColor = role === 'admin'
+    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
     : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
 
   return (
@@ -239,6 +239,7 @@ export function AcceptInvitationForm({
                   placeholder="John"
                   {...register('firstName')}
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
                 {errors.firstName && (
                   <p className="text-destructive text-sm">{errors.firstName.message}</p>
@@ -251,6 +252,7 @@ export function AcceptInvitationForm({
                   placeholder="Doe"
                   {...register('lastName')}
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
                 {errors.lastName && (
                   <p className="text-destructive text-sm">{errors.lastName.message}</p>

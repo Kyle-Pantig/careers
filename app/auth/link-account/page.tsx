@@ -159,6 +159,7 @@ function LinkAccountForm() {
                         placeholder="Enter your password"
                         className="pr-10"
                         autoFocus
+                        autoComplete="off"
                       />
                       <button
                         type="button"

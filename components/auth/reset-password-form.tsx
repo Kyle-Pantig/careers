@@ -111,6 +111,7 @@ export function ResetPasswordForm({
       className={cn('flex flex-col gap-6', className)}
       onSubmit={handleSubmit(onSubmit)}
       {...props}
+      autoComplete="off"
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-4 text-center">
@@ -135,6 +136,7 @@ export function ResetPasswordForm({
               {...register('password')}
               disabled={isLoading}
               className="pr-10"
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -164,6 +166,7 @@ export function ResetPasswordForm({
               {...register('confirmPassword')}
               disabled={isLoading}
               className="pr-10"
+              autoComplete="new-password"
             />
             <button
               type="button"

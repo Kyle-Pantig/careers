@@ -303,7 +303,7 @@ export function LoginForm({
         </div>
 
         {loginMethod === 'password' ? (
-          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} {...props}>
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} {...props} autoComplete="off">
             <div className="flex flex-col gap-4">
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -313,6 +313,7 @@ export function LoginForm({
                   placeholder="m@example.com"
                   {...passwordForm.register('email')}
                   disabled={isLoading}
+                  autoComplete="off"
                 />
                 {passwordForm.formState.errors.email && (
                   <p className="text-destructive text-sm">{passwordForm.formState.errors.email.message}</p>
@@ -336,6 +337,7 @@ export function LoginForm({
                     {...passwordForm.register('password')}
                     disabled={isLoading}
                     className="pr-10"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
