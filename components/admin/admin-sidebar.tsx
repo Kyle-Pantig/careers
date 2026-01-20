@@ -3,11 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  FileText, 
-  Users, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  FileText,
+  Users,
   Plus,
   FolderOpen,
   Mail,
@@ -120,7 +120,7 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">Careers Platform</span>
-                  <span className="text-xs text-muted-foreground">Admin Panel</span>
+                  <span className="text-xs text-white">Admin Panel</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -141,8 +141,8 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                         <span>{item.title}</span>
                       </span>
                       {item.url === '/dashboard/applications' && pendingCount > 0 && (
-                        <Badge 
-                          variant="destructive" 
+                        <Badge
+                          variant="destructive"
                           className="h-5 min-w-5 px-1.5 text-xs font-medium"
                         >
                           {pendingCount > 99 ? '99+' : pendingCount}

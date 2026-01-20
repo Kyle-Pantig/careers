@@ -47,21 +47,21 @@ export function AdminHeader() {
   const fullName = user ? `${user.firstName} ${user.lastName}` : 'User';
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar text-sidebar-foreground px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
         <Separator orientation="vertical" className="mr-2 h-4" />
         {breadcrumbs.length > 0 ? (
           <Breadcrumb>
-            <BreadcrumbList>
+            <BreadcrumbList className="text-white">
               {breadcrumbs.map((crumb, index) => (
                 <span key={index} className="contents">
-                  {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+                  {index > 0 && <BreadcrumbSeparator className="hidden md:block text-white/60" />}
                   <BreadcrumbItem className={index < breadcrumbs.length - 1 ? "hidden md:block" : ""}>
                     {index === breadcrumbs.length - 1 ? (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      <BreadcrumbPage className="text-white">{crumb.label}</BreadcrumbPage>
                     ) : (
-                      <BreadcrumbLink href={crumb.href || "#"}>{crumb.label}</BreadcrumbLink>
+                      <BreadcrumbLink href={crumb.href || "#"} className="text-white/80 hover:text-white">{crumb.label}</BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
                 </span>
@@ -69,18 +69,18 @@ export function AdminHeader() {
             </BreadcrumbList>
           </Breadcrumb>
         ) : (
-          <span className="font-semibold">Admin Panel</span>
+          <span className="font-semibold text-white">Admin Panel</span>
         )}
       </div>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 hover:bg-muted focus:outline-none">
-          <Avatar className="h-8 w-8">
+        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 bg-sidebar-accent hover:bg-sidebar-accent/80 focus:outline-none cursor-pointer">
+          <Avatar className="h-8 w-8 text-black">
             <AvatarImage src="" alt={fullName} />
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
           <span className="hidden text-sm font-medium md:block">{fullName}</span>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 opacity-70" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="font-normal">
@@ -99,7 +99,7 @@ export function AdminHeader() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          <DropdownMenuItem
             className="text-destructive cursor-pointer"
             onClick={handleLogout}
           >
