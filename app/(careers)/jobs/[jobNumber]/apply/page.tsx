@@ -82,7 +82,7 @@ export default function JobApplyPage() {
     },
   });
 
-  // Auto-fill user data when available
+  // Auto-fill user data when available, clear when logged out
   useEffect(() => {
     if (user) {
       reset({
@@ -96,6 +96,17 @@ export default function JobApplyPage() {
       if (user.resumeUrl && user.resumeFileName) {
         setUseProfileResume(true);
       }
+    } else {
+      // Clear form when user logs out
+      reset({
+        firstName: '',
+        lastName: '',
+        email: '',
+        contactNumber: '',
+        address: '',
+      });
+      setResumeFile(null);
+      setUseProfileResume(false);
     }
   }, [user, reset]);
 
@@ -588,7 +599,7 @@ export default function JobApplyPage() {
                 </label>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button
                   type="button"
@@ -614,6 +625,18 @@ export default function JobApplyPage() {
                   )}
                 </Button>
               </div>
+              {!user && (
+                <p className="text-sm text-center text-muted-foreground pt-3">
+                  Want to track your application status?{' '}
+                  <Link href={`/login?redirect=/jobs/${jobNumber}/apply`} className="underline hover:text-foreground">
+                    Log in
+                  </Link>{' '}
+                  or{' '}
+                  <Link href={`/signup?redirect=/jobs/${jobNumber}/apply`} className="underline hover:text-foreground">
+                    create an account
+                  </Link>
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>

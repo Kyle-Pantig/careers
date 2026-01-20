@@ -13,6 +13,7 @@ import {
   Mail,
   GalleryVerticalEnd,
   UserCircle,
+  Archive,
 } from "lucide-react"
 import { usePendingApplicationsCount } from "@/hooks"
 import { Badge } from "@/components/ui/badge"
@@ -67,6 +68,11 @@ const navigation = [
         title: "All Applications",
         url: "/dashboard/applications",
         icon: FileText,
+      },
+      {
+        title: "Archived",
+        url: "/dashboard/applications/archived",
+        icon: Archive,
       },
     ],
   },

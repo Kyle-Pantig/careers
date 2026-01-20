@@ -5,6 +5,10 @@ import {
   updateApplicationStatus,
   getUserApplications,
   getPendingApplicationsCount,
+  getArchivedApplications,
+  archiveApplication,
+  restoreApplication,
+  deleteApplicationPermanently,
   type Application,
 } from '@/lib/applications';
 
@@ -61,5 +65,53 @@ export function usePendingApplicationsCount() {
     queryFn: () => getPendingApplicationsCount(),
     staleTime: 1000 * 60 * 2, // 2 minutes
     refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
+  });
+}
+
+// Get archived applications (admin)
+export function useArchivedApplications(
+  options: { page?: number; limit?: number; status?: string; search?: string } = {}
+) {
+  return useQuery({
+    queryKey: ['applications', 'archived', options],
+    queryFn: () => getArchivedApplications(options),
+  });
+}
+
+// Archive an application
+export function useArchiveApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => archiveApplication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-applications-count'] });
+    },
+  });
+}
+
+// Restore an archived application
+export function useRestoreApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => restoreApplication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-applications-count'] });
+    },
+  });
+}
+
+// Permanently delete an application
+export function useDeleteApplicationPermanently() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteApplicationPermanently(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+    },
   });
 }

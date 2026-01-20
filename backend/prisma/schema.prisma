@@ -249,6 +249,9 @@ model JobApplication {
   
   status       String   @default("pending") // pending, reviewed, shortlisted, rejected, hired
   notes        String?  // Admin notes
+  
+  // Archive support
+  archivedAt   DateTime? // null = not archived, date = when archived
 
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)

@@ -128,14 +128,16 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
     }
   )
 
-  // Get all applications (admin/staff)
+  // Get all applications (admin/staff) - excludes archived by default
   .get(
     '/all',
     async ({ query }) => {
       const { page = '1', limit = '50', status, search } = query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = {
+        archivedAt: null, // Only non-archived applications
+      };
 
       if (status && status !== 'all') {
         where.status = status;
@@ -157,6 +159,82 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
           skip,
           take: parseInt(limit),
           orderBy: { createdAt: 'desc' },
+          include: {
+            job: {
+              select: {
+                id: true,
+                title: true,
+                jobNumber: true,
+                location: true,
+                salaryMin: true,
+                salaryMax: true,
+                salaryPeriod: true,
+                salaryCurrency: true,
+                industry: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.jobApplication.count({ where }),
+      ]);
+
+      return {
+        applications,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+      };
+    },
+    {
+      hasPermission: PERMISSIONS.APPLICATIONS_VIEW,
+      query: t.Object({
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+        status: t.Optional(t.String()),
+        search: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // Get archived applications (admin/staff)
+  .get(
+    '/archived',
+    async ({ query }) => {
+      const { page = '1', limit = '50', status, search } = query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where: Record<string, unknown> = {
+        archivedAt: { not: null }, // Only archived applications
+      };
+
+      if (status && status !== 'all') {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { job: { title: { contains: search, mode: 'insensitive' } } },
+          { job: { jobNumber: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [applications, total] = await Promise.all([
+        prisma.jobApplication.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { archivedAt: 'desc' } as Record<string, unknown>,
           include: {
             job: {
               select: {
@@ -504,6 +582,118 @@ prisma.jobApplication.findMany({
           t.Literal('hired'),
         ]),
         notes: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // Archive an application (admin/staff)
+  .patch(
+    '/:id/archive',
+    async ({ params, set }) => {
+      const existingApplication = await prisma.jobApplication.findUnique({
+        where: { id: params.id },
+      });
+
+      if (!existingApplication) {
+        set.status = 404;
+        return { error: 'Application not found' };
+      }
+
+      const application = await (prisma.jobApplication.update as Function)({
+        where: { id: params.id },
+        data: {
+          archivedAt: new Date(),
+        },
+        include: {
+          job: {
+            select: {
+              title: true,
+              jobNumber: true,
+            },
+          },
+        },
+      });
+
+      return {
+        application,
+        message: 'Application archived successfully',
+      };
+    },
+    {
+      hasPermission: PERMISSIONS.APPLICATIONS_EDIT,
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  // Restore an archived application (admin/staff)
+  .patch(
+    '/:id/restore',
+    async ({ params, set }) => {
+      const existingApplication = await prisma.jobApplication.findUnique({
+        where: { id: params.id },
+      });
+
+      if (!existingApplication) {
+        set.status = 404;
+        return { error: 'Application not found' };
+      }
+
+      const application = await (prisma.jobApplication.update as Function)({
+        where: { id: params.id },
+        data: {
+          archivedAt: null,
+        },
+        include: {
+          job: {
+            select: {
+              title: true,
+              jobNumber: true,
+            },
+          },
+        },
+      });
+
+      return {
+        application,
+        message: 'Application restored successfully',
+      };
+    },
+    {
+      hasPermission: PERMISSIONS.APPLICATIONS_EDIT,
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  // Permanently delete an application (admin/staff)
+  .delete(
+    '/:id',
+    async ({ params, set }) => {
+      const existingApplication = await prisma.jobApplication.findUnique({
+        where: { id: params.id },
+      });
+
+      if (!existingApplication) {
+        set.status = 404;
+        return { error: 'Application not found' };
+      }
+
+      await prisma.jobApplication.delete({
+        where: { id: params.id },
+      });
+
+      return {
+        success: true,
+        message: 'Application permanently deleted',
+      };
+    },
+    {
+      hasPermission: PERMISSIONS.APPLICATIONS_EDIT,
+      params: t.Object({
+        id: t.String(),
       }),
     }
   )

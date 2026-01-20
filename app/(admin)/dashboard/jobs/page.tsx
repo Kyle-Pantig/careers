@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useBreadcrumbs, useAuth } from '@/context';
 import { Button } from '@/components/ui/button';
@@ -39,11 +39,23 @@ import {
   Eye, 
   EyeOff,
   Loader2,
-  Briefcase
+  Briefcase,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
 import { useAdminJobs, useDeleteJob, useToggleJobPublish } from '@/hooks';
-import { type WorkType } from '@/lib/jobs';
+import { type WorkType, type Job } from '@/lib/jobs';
 import { WORK_TYPE_LABELS, PERMISSIONS } from '@/shared/validators';
 import { AccessDenied } from '@/components/admin/access-denied';
 
@@ -56,6 +68,8 @@ export default function JobsPage() {
   const [publishedFilter, setPublishedFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [togglingJobId, setTogglingJobId] = useState<string | null>(null);
+  const [successId, setSuccessId] = useState<string | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const limit = 10;
 
   // React Query hooks
@@ -72,6 +86,247 @@ export default function JobsPage() {
 
   const jobs = data?.jobs || [];
   const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Column definitions for TanStack Table
+  const columns = useMemo<ColumnDef<Job>[]>(() => [
+    {
+      accessorKey: 'title',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Job
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <p className="font-medium truncate max-w-[200px]">{row.original.title}</p>
+          <p className="text-sm text-muted-foreground font-mono">{row.original.jobNumber}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'industry.name',
+      id: 'industry',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden md:flex"
+        >
+          Industry
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="truncate max-w-[120px] block">{row.original.industry?.name || '-'}</span>
+      ),
+    },
+    {
+      accessorKey: 'location',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden lg:flex"
+        >
+          Location
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="truncate max-w-[150px] block">{row.original.location}</span>
+      ),
+    },
+    {
+      accessorKey: 'isPublished',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Status
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        row.original.isPublished ? (
+          <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 whitespace-nowrap">
+            Published
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="whitespace-nowrap">Draft</Badge>
+        )
+      ),
+    },
+    {
+      accessorFn: (row) => row._count?.applications || 0,
+      id: 'applications',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden sm:flex"
+        >
+          Apps
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-center block">{row.original._count?.applications || 0}</span>
+      ),
+    },
+    {
+      accessorKey: 'createdAt',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden lg:flex"
+        >
+          Created
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">{formatDate(row.original.createdAt)}</span>
+      ),
+      sortingFn: (rowA, rowB) => {
+        return new Date(rowA.original.createdAt).getTime() - new Date(rowB.original.createdAt).getTime();
+      },
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        const job = row.original;
+        const isProcessing = togglingJobId === job.id;
+        const isSuccess = successId === job.id;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isProcessing || isSuccess}>
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isSuccess ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/jobs/preview/${job.jobNumber}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </Link>
+              </DropdownMenuItem>
+              {hasPermission(PERMISSIONS.JOBS_EDIT) && (
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/jobs/${job.id}/edit`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {hasPermission(PERMISSIONS.JOBS_PUBLISH) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => handleTogglePublish(job.id)}
+                    disabled={togglePublishMutation.isPending}
+                  >
+                    {job.isPublished ? (
+                      <>
+                        <EyeOff className="mr-2 h-4 w-4" />
+                        Unpublish
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Publish
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {hasPermission(PERMISSIONS.JOBS_DELETE) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => handleDelete(job.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ], [togglingJobId, successId, hasPermission, togglePublishMutation.isPending, deleteMutation.isPending]);
+
+  // TanStack Table instance
+  const table = useReactTable({
+    data: jobs,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -101,20 +356,14 @@ export default function JobsPage() {
     setTogglingJobId(id);
     try {
       await togglePublishMutation.mutateAsync(id);
+      setTogglingJobId(null);
+      setSuccessId(id);
+      setTimeout(() => setSuccessId(null), 1500);
       toast.success('Job status updated');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to toggle publish status');
-    } finally {
       setTogglingJobId(null);
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle publish status');
     }
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
   };
 
   // Reset page when filters change
@@ -224,109 +473,44 @@ export default function JobsPage() {
             <ScrollArea className="w-full">
               <Table className="min-w-[400px]">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[180px]">Job</TableHead>
-                    <TableHead className="hidden md:table-cell">Industry</TableHead>
-                    <TableHead className="hidden lg:table-cell whitespace-nowrap">Location</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="hidden sm:table-cell text-center whitespace-nowrap">Apps</TableHead>
-                    <TableHead className="hidden lg:table-cell whitespace-nowrap">Created</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead 
+                          key={header.id}
+                          className={
+                            header.id === 'industry' ? 'hidden md:table-cell' :
+                            header.id === 'location' ? 'hidden lg:table-cell' :
+                            header.id === 'applications' ? 'hidden sm:table-cell text-center' :
+                            header.id === 'createdAt' ? 'hidden lg:table-cell' :
+                            header.id === 'actions' ? 'w-[50px]' :
+                            header.id === 'title' ? 'min-w-[180px]' : ''
+                          }
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate max-w-[200px]">{job.title}</p>
-                          <p className="text-sm text-muted-foreground font-mono">{job.jobNumber}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="truncate max-w-[120px] block">{job.industry?.name || '-'}</span>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <span className="truncate max-w-[150px] block">{job.location}</span>
-                      </TableCell>
-                      <TableCell>
-                        {job.isPublished ? (
-                          <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 whitespace-nowrap">
-                            Published
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="whitespace-nowrap">Draft</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-center whitespace-nowrap">
-                        {job._count?.applications || 0}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell whitespace-nowrap">
-                        {formatDate(job.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={togglingJobId === job.id}>
-                              {togglingJobId === job.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MoreHorizontal className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/dashboard/jobs/preview/${job.jobNumber}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                              </Link>
-                            </DropdownMenuItem>
-                            {hasPermission(PERMISSIONS.JOBS_EDIT) && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/jobs/${job.id}/edit`}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                            {hasPermission(PERMISSIONS.JOBS_PUBLISH) && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => handleTogglePublish(job.id)}
-                                  disabled={togglePublishMutation.isPending}
-                                >
-                                  {job.isPublished ? (
-                                    <>
-                                      <EyeOff className="mr-2 h-4 w-4" />
-                                      Unpublish
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      Publish
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {hasPermission(PERMISSIONS.JOBS_DELETE) && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => handleDelete(job.id)}
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell 
+                          key={cell.id}
+                          className={
+                            cell.column.id === 'industry' ? 'hidden md:table-cell' :
+                            cell.column.id === 'location' ? 'hidden lg:table-cell' :
+                            cell.column.id === 'applications' ? 'hidden sm:table-cell text-center' :
+                            cell.column.id === 'createdAt' ? 'hidden lg:table-cell' : ''
+                          }
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>

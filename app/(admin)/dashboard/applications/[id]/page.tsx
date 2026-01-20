@@ -38,6 +38,7 @@ import {
   ExternalLink,
   Download,
   Maximize2,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -341,12 +342,6 @@ export default function ApplicationDetailPage() {
                   Call Applicant
                 </a>
               </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <a href={application.resumeUrl} target="_blank" rel="noopener noreferrer">
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Resume
-                </a>
-              </Button>
             </CardContent>
           </Card>
 
@@ -367,8 +362,8 @@ export default function ApplicationDetailPage() {
           />
 
           {/* Application Info */}
-          <Card>
-            <CardContent className="pt-6 space-y-3 text-sm">
+          <Card className='py-4'>
+            <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Applied</span>
                 <span>{formatDate(application.createdAt)}</span>
@@ -380,7 +375,10 @@ export default function ApplicationDetailPage() {
               {application.userId && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Account</span>
-                  <Badge variant="outline">Verified</Badge>
+                  <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Verified</span>
+                  </Badge>
                 </div>
               )}
             </CardContent>

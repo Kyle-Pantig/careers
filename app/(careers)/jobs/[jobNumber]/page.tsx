@@ -246,32 +246,12 @@ export default function JobDetailPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <motion.div variants={fadeInUp} transition={{ duration: 0.5 }}>
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="font-mono text-xs">
-                {job.jobNumber}
-              </Badge>
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="outline" className="gap-1">
                 <Building2 className="h-3 w-3" />
                 {job.industry?.name}
               </Badge>
             </div>
             <h1 className="text-3xl font-bold tracking-tight mb-2">{job.title}</h1>
-            <div className="flex flex-wrap gap-3 text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {job.location}
-              </span>
-              <span className="flex items-center gap-1">
-                <Briefcase className="h-4 w-4" />
-                {WORK_TYPE_LABELS[job.workType]}
-              </span>
-              <Badge variant="outline">
-                {JOB_TYPE_LABELS[job.jobType]}
-              </Badge>
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {SHIFT_TYPE_LABELS[job.shiftType]}
-              </span>
-            </div>
           </motion.div>
           <motion.div 
             className="flex gap-2"

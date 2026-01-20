@@ -24,6 +24,7 @@ export interface Application {
   resumeFileName: string;
   status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected' | 'hired';
   notes: string | null;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
   job?: {
@@ -38,6 +39,7 @@ export interface Application {
     salaryPeriod?: string | null;
     salaryCurrency?: string | null;
     industry?: {
+      id?: string;
       name: string;
     };
   };
@@ -293,6 +295,77 @@ export async function sendTemplateEmailToApplicant(
 
   if (!res.ok) {
     throw new Error(result.error || 'Failed to send email');
+  }
+
+  return result;
+}
+
+// Get archived applications (admin)
+export async function getArchivedApplications(
+  options: { page?: number; limit?: number; status?: string; search?: string } = {}
+): Promise<{ applications: Application[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  const params = new URLSearchParams();
+  if (options.page) params.set('page', options.page.toString());
+  if (options.limit) params.set('limit', options.limit.toString());
+  if (options.status && options.status !== 'all') params.set('status', options.status);
+  if (options.search) params.set('search', options.search);
+
+  const res = await fetch(`${API_URL}/applications/archived?${params}`, {
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to fetch archived applications');
+  }
+
+  return result;
+}
+
+// Archive an application (admin)
+export async function archiveApplication(id: string): Promise<{ application: Application; message: string }> {
+  const res = await fetch(`${API_URL}/applications/${id}/archive`, {
+    method: 'PATCH',
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to archive application');
+  }
+
+  return result;
+}
+
+// Restore an archived application (admin)
+export async function restoreApplication(id: string): Promise<{ application: Application; message: string }> {
+  const res = await fetch(`${API_URL}/applications/${id}/restore`, {
+    method: 'PATCH',
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to restore application');
+  }
+
+  return result;
+}
+
+// Permanently delete an application (admin)
+export async function deleteApplicationPermanently(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/applications/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result.error || 'Failed to delete application');
   }
 
   return result;

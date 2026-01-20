@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Dialog,
   DialogContent,
@@ -509,13 +510,11 @@ export function EmailComposeDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="message">Message</Label>
-                <Textarea
-                  id="message"
-                  placeholder="Write your message..."
+                <RichTextEditor
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={8}
-                  className="resize-none"
+                  onChange={setMessage}
+                  placeholder="Write your message..."
+                  disabled={isPending}
                 />
               </div>
             </TabsContent>

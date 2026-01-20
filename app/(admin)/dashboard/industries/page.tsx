@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,21 +43,40 @@ import {
   Trash2, 
   Loader2,
   Building2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
 import { useBreadcrumbs, useAuth } from '@/context';
 import { useAdminIndustries, useCreateIndustry, useUpdateIndustry, useDeleteIndustry } from '@/hooks';
 import type { Industry } from '@/lib/industries';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { industrySchema, type IndustryFormData, PERMISSIONS } from '@/shared/validators';
+import { industrySchema, PERMISSIONS } from '@/shared/validators';
 import { AccessDenied } from '@/components/admin/access-denied';
+
+// Local form type with required isActive
+type IndustryForm = {
+  name: string;
+  description?: string;
+  isActive: boolean;
+};
 
 export default function IndustriesPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { hasPermission, isLoading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingIndustry, setEditingIndustry] = useState<Industry | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   // React Query hooks
   const { data: industriesData, isLoading } = useAdminIndustries();
@@ -76,8 +95,8 @@ export default function IndustriesPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<IndustryFormData>({
-    resolver: zodResolver(industrySchema),
+  } = useForm<IndustryForm>({
+    resolver: zodResolver(industrySchema) as any,
     defaultValues: {
       name: '',
       description: '',
@@ -86,6 +105,138 @@ export default function IndustriesPage() {
   });
 
   const watchIsActive = watch('isActive');
+
+  const openEditDialog = (industry: Industry) => {
+    setEditingIndustry(industry);
+    reset({
+      name: industry.name,
+      description: industry.description || '',
+      isActive: industry.isActive,
+    });
+    setDialogOpen(true);
+  };
+
+  // Column definitions for TanStack Table
+  const columns = useMemo<ColumnDef<Industry>[]>(() => [
+    {
+      accessorKey: 'name',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Name
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: 'description',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Description
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground max-w-[300px] truncate block">
+          {row.original.description || '-'}
+        </span>
+      ),
+    },
+    {
+      accessorFn: (row) => row._count?.jobs || 0,
+      id: 'jobs',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Jobs
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => row.original._count?.jobs || 0,
+    },
+    {
+      accessorKey: 'isActive',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Status
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        row.original.isActive ? (
+          <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20">
+            Active
+          </Badge>
+        ) : (
+          <Badge variant="secondary">Inactive</Badge>
+        )
+      ),
+    },
+    ...(hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) ? [{
+      id: 'actions',
+      cell: ({ row }: { row: { original: Industry } }) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => openEditDialog(row.original)}
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      ),
+    }] : []),
+  ], [hasPermission]);
+
+  // TanStack Table instance
+  const table = useReactTable({
+    data: industries,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -112,17 +263,7 @@ export default function IndustriesPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (industry: Industry) => {
-    setEditingIndustry(industry);
-    reset({
-      name: industry.name,
-      description: industry.description || '',
-      isActive: industry.isActive,
-    });
-    setDialogOpen(true);
-  };
-
-  const onSubmit = async (data: IndustryFormData) => {
+  const onSubmit = async (data: IndustryForm) => {
     try {
       if (editingIndustry) {
         await updateMutation.mutateAsync({ id: editingIndustry.id, data });
@@ -290,13 +431,7 @@ export default function IndustriesPage() {
       </div>
 
       {/* Industries Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Industries</CardTitle>
-          <CardDescription>
-            Industries are used to categorize job postings
-          </CardDescription>
-        </CardHeader>
+      <Card className='py-0'>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -319,45 +454,29 @@ export default function IndustriesPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Jobs</TableHead>
-                  <TableHead>Status</TableHead>
-                  {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
-                    <TableHead className="w-[70px]"></TableHead>
-                  )}
-                </TableRow>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead 
+                        key={header.id}
+                        className={header.id === 'actions' ? 'w-[70px]' : ''}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
-                {industries.map((industry) => (
-                  <TableRow key={industry.id}>
-                    <TableCell className="font-medium">{industry.name}</TableCell>
-                    <TableCell className="text-muted-foreground max-w-[300px] truncate">
-                      {industry.description || '-'}
-                    </TableCell>
-                    <TableCell>{industry._count?.jobs || 0}</TableCell>
-                    <TableCell>
-                      {industry.isActive ? (
-                        <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
-                    </TableCell>
-                    {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(industry)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
-                    )}
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>

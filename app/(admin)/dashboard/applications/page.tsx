@@ -3,8 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
 import { useBreadcrumbs, useAuth } from '@/context';
-import { getAdminApplications, updateApplicationStatus, type Application } from '@/lib/applications';
+import { getAdminApplications, updateApplicationStatus, archiveApplication, type Application } from '@/lib/applications';
 import { getAdminIndustries, type Industry } from '@/lib/industries';
 import { PERMISSIONS } from '@/shared/validators/permissions';
 import { AccessDenied } from '@/components/admin/access-denied';
@@ -78,6 +86,12 @@ import {
   RefreshCw,
   LayoutGrid,
   List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Archive,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -107,6 +121,8 @@ export default function ApplicationsPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailApplication, setEmailApplication] = useState<Application | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [successId, setSuccessId] = useState<string | null>(null);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -130,7 +146,9 @@ export default function ApplicationsPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: string; status: Application['status']; notes?: string }) =>
       updateApplicationStatus(id, { status, notes }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      setSuccessId(variables.id);
+      setTimeout(() => setSuccessId(null), 1500);
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       toast.success('Application status updated');
       setStatusDialogOpen(false);
@@ -139,6 +157,19 @@ export default function ApplicationsPage() {
     },
     onError: () => {
       toast.error('Failed to update status');
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveApplication(id),
+    onSuccess: (_, id) => {
+      setSuccessId(id);
+      setTimeout(() => setSuccessId(null), 1500);
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast.success('Application archived');
+    },
+    onError: () => {
+      toast.error('Failed to archive application');
     },
   });
 
@@ -218,6 +249,255 @@ export default function ApplicationsPage() {
       });
     }
   };
+
+  // Column definitions for TanStack Table
+  const columns = useMemo<ColumnDef<Application>[]>(() => [
+    {
+      id: 'applicant',
+      accessorFn: (row) => `${row.firstName} ${row.lastName}`,
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Applicant
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+              {getInitials(row.original.firstName, row.original.lastName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-medium truncate max-w-[150px]">{row.original.firstName} {row.original.lastName}</p>
+            <p className="text-sm text-muted-foreground truncate max-w-[150px]">{row.original.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'job',
+      accessorFn: (row) => row.job?.title || '',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden sm:flex"
+        >
+          Job
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <p className="truncate max-w-[200px]">{row.original.job?.title}</p>
+          <p className="text-sm text-muted-foreground font-mono">{row.original.job?.jobNumber}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'industry',
+      accessorFn: (row) => row.job?.industry?.name || '',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden lg:flex"
+        >
+          Industry
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => row.original.job?.industry?.name || 'N/A',
+    },
+    {
+      accessorKey: 'status',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2"
+        >
+          Status
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <Badge 
+          variant={STATUS_CONFIG[row.original.status]?.variant || 'secondary'} 
+          className={`gap-1 ${row.original.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
+        >
+          {STATUS_CONFIG[row.original.status]?.icon}
+          {STATUS_CONFIG[row.original.status]?.label || row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'createdAt',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="h-8 px-2 hover:bg-transparent -ml-2 hidden md:flex"
+        >
+          Applied
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground whitespace-nowrap">{formatDate(row.original.createdAt)}</span>
+      ),
+      sortingFn: (rowA, rowB) => {
+        return new Date(rowA.original.createdAt).getTime() - new Date(rowB.original.createdAt).getTime();
+      },
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        const application = row.original;
+        const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
+        const currentIndex = statusOrder.indexOf(application.status);
+        const isRejected = application.status === 'rejected';
+        const isProcessing = 
+          (archiveMutation.isPending && archiveMutation.variables === application.id) ||
+          (updateMutation.isPending && selectedApplication?.id === application.id);
+        const isSuccess = successId === application.id;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isProcessing || isSuccess}>
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isSuccess ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/applications/${application.id}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedResume({
+                    url: application.resumeUrl,
+                    fileName: application.resumeFileName,
+                  });
+                  setPdfViewerOpen(true);
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                View Resume
+              </DropdownMenuItem>
+              {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEmailApplication(application);
+                    setEmailDialogOpen(true);
+                  }}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Email
+                </DropdownMenuItem>
+              )}
+              {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => handleStatusChange(application, 'reviewed')}
+                    disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Mark as Reviewed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => handleStatusChange(application, 'shortlisted')}
+                    disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    Shortlist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => handleStatusChange(application, 'hired')}
+                    disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
+                  >
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Mark as Hired
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => handleStatusChange(application, 'rejected')}
+                    disabled={isRejected}
+                    className="text-destructive"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => archiveMutation.mutate(application.id)}
+                    disabled={archiveMutation.isPending}
+                  >
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ], [hasPermission, archiveMutation, updateMutation, selectedApplication, successId]);
+
+  // TanStack Table instance
+  const table = useReactTable({
+    data: applications,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   if (authLoading) {
     return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
@@ -372,144 +652,50 @@ export default function ApplicationsPage() {
           </CardContent>
         </Card>
       ) : viewMode === 'table' ? (
-        <Card>
+        <Card className='py-0'>
           <CardContent className="p-0">
             <ScrollArea className="w-full">
               <Table className="min-w-[600px]">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[180px]">Applicant</TableHead>
-                    <TableHead className="hidden sm:table-cell">Job</TableHead>
-                    <TableHead className="hidden lg:table-cell">Industry</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="hidden md:table-cell whitespace-nowrap">Applied</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead 
+                          key={header.id}
+                          className={
+                            header.id === 'applicant' ? 'min-w-[180px]' :
+                            header.id === 'job' ? 'hidden sm:table-cell' :
+                            header.id === 'industry' ? 'hidden lg:table-cell' :
+                            header.id === 'createdAt' ? 'hidden md:table-cell' :
+                            header.id === 'actions' ? 'w-[50px]' : ''
+                          }
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
-                  {applications.map((application) => (
-                    <TableRow key={application.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {getInitials(application.firstName, application.lastName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate max-w-[150px]">{application.firstName} {application.lastName}</p>
-                            <p className="text-sm text-muted-foreground truncate max-w-[150px]">{application.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="min-w-0">
-                          <p className="truncate max-w-[200px]">{application.job?.title}</p>
-                          <p className="text-sm text-muted-foreground font-mono">{application.job?.jobNumber}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {application.job?.industry?.name || 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={STATUS_CONFIG[application.status]?.variant || 'secondary'} 
-                          className={`gap-1 ${application.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell 
+                          key={cell.id}
+                          className={
+                            cell.column.id === 'job' ? 'hidden sm:table-cell' :
+                            cell.column.id === 'industry' ? 'hidden lg:table-cell' :
+                            cell.column.id === 'createdAt' ? 'hidden md:table-cell' : ''
+                          }
                         >
-                          {STATUS_CONFIG[application.status]?.icon}
-                          {STATUS_CONFIG[application.status]?.label || application.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground whitespace-nowrap">
-                        {formatDate(application.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/applications/${application.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedResume({
-                                url: application.resumeUrl,
-                                fileName: application.resumeFileName,
-                              });
-                              setPdfViewerOpen(true);
-                            }}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            View Resume
-                          </DropdownMenuItem>
-                          {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEmailApplication(application);
-                                setEmailDialogOpen(true);
-                              }}
-                            >
-                              <Mail className="mr-2 h-4 w-4" />
-                              Send Email
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {(() => {
-                                const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
-                                const currentIndex = statusOrder.indexOf(application.status);
-                                const isRejected = application.status === 'rejected';
-                                
-                                return (
-                                  <>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleStatusChange(application, 'reviewed')}
-                                      disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
-                                    >
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      Mark as Reviewed
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleStatusChange(application, 'shortlisted')}
-                                      disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
-                                    >
-                                      <Star className="mr-2 h-4 w-4" />
-                                      Shortlist
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleStatusChange(application, 'hired')}
-                                      disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
-                                    >
-                                      <UserCheck className="mr-2 h-4 w-4" />
-                                      Mark as Hired
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleStatusChange(application, 'rejected')}
-                                      disabled={isRejected}
-                                      className="text-destructive"
-                                    >
-                                      <XCircle className="mr-2 h-4 w-4" />
-                                      Reject
-                                    </DropdownMenuItem>
-                                  </>
-                                );
-                              })()}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
@@ -557,12 +743,12 @@ export default function ApplicationsPage() {
                     </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="px-6 pb-4 space-y-3">
+                <AccordionContent className='py-0'>
+                  <div>
                     {industryApps.map((application) => (
                       <div
                         key={application.id}
-                        className="flex items-center justify-between p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-4 border-b last:border-b-0 bg-muted/30 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center gap-4 min-w-0 flex-1">
                           <Avatar className="h-10 w-10">
@@ -583,16 +769,15 @@ export default function ApplicationsPage() {
                                 {STATUS_CONFIG[application.status]?.label || application.status}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                              <span className="truncate">{application.email}</span>
-                              <span className="hidden sm:inline">•</span>
-                              <span className="hidden sm:flex items-center gap-1">
+                            <ul className="flex flex-col gap-0.5 text-sm text-muted-foreground mt-1">
+                              <li className="truncate">• {application.email}</li>
+                              <li className="flex items-center gap-1">
+                                <span>•</span>
                                 <Briefcase className="h-3 w-3" />
-                                {application.job?.title}
-                              </span>
-                              <span className="hidden md:inline">•</span>
-                              <span className="hidden md:inline">{formatDate(application.createdAt)}</span>
-                            </div>
+                                <span className="truncate">{application.job?.title}</span>
+                              </li>
+                              <li className="hidden md:block">• {formatDate(application.createdAt)}</li>
+                            </ul>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 ml-4">
@@ -602,88 +787,111 @@ export default function ApplicationsPage() {
                               <ChevronRight className="h-4 w-4 ml-1" />
                             </Link>
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/applications/${application.id}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedResume({
-                                    url: application.resumeUrl,
-                                    fileName: application.resumeFileName,
-                                  });
-                                  setPdfViewerOpen(true);
-                                }}
-                              >
-                                <FileText className="mr-2 h-4 w-4" />
-                                View Resume
-                              </DropdownMenuItem>
-                              {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEmailApplication(application);
-                                    setEmailDialogOpen(true);
-                                  }}
-                                >
-                                  <Mail className="mr-2 h-4 w-4" />
-                                  Send Email
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  {(() => {
-                                    const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
-                                    const currentIndex = statusOrder.indexOf(application.status);
-                                    const isRejected = application.status === 'rejected';
-                                    
-                                    return (
-                                      <>
-                                        <DropdownMenuItem 
-                                          onClick={() => handleStatusChange(application, 'reviewed')}
-                                          disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
-                                        >
-                                          <Eye className="mr-2 h-4 w-4" />
-                                          Mark as Reviewed
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                          onClick={() => handleStatusChange(application, 'shortlisted')}
-                                          disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
-                                        >
-                                          <Star className="mr-2 h-4 w-4" />
-                                          Shortlist
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                          onClick={() => handleStatusChange(application, 'hired')}
-                                          disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
-                                        >
-                                          <UserCheck className="mr-2 h-4 w-4" />
-                                          Mark as Hired
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                          onClick={() => handleStatusChange(application, 'rejected')}
-                                          disabled={isRejected}
-                                          className="text-destructive"
-                                        >
-                                          <XCircle className="mr-2 h-4 w-4" />
-                                          Reject
-                                        </DropdownMenuItem>
-                                      </>
-                                    );
-                                  })()}
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {(() => {
+                            const isProcessing = 
+                              (archiveMutation.isPending && archiveMutation.variables === application.id) ||
+                              (updateMutation.isPending && selectedApplication?.id === application.id);
+                            const isSuccess = successId === application.id;
+                            
+                            return (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isProcessing || isSuccess}>
+                                    {isProcessing ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : isSuccess ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/dashboard/applications/${application.id}`}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      View Details
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedResume({
+                                        url: application.resumeUrl,
+                                        fileName: application.resumeFileName,
+                                      });
+                                      setPdfViewerOpen(true);
+                                    }}
+                                  >
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    View Resume
+                                  </DropdownMenuItem>
+                                  {hasPermission(PERMISSIONS.APPLICATIONS_EMAIL) && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEmailApplication(application);
+                                        setEmailDialogOpen(true);
+                                      }}
+                                    >
+                                      <Mail className="mr-2 h-4 w-4" />
+                                      Send Email
+                                    </DropdownMenuItem>
+                                  )}
+                                  {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      {(() => {
+                                        const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
+                                        const currentIndex = statusOrder.indexOf(application.status);
+                                        const isRejected = application.status === 'rejected';
+                                        
+                                        return (
+                                          <>
+                                            <DropdownMenuItem 
+                                              onClick={() => handleStatusChange(application, 'reviewed')}
+                                              disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
+                                            >
+                                              <Eye className="mr-2 h-4 w-4" />
+                                              Mark as Reviewed
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => handleStatusChange(application, 'shortlisted')}
+                                              disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
+                                            >
+                                              <Star className="mr-2 h-4 w-4" />
+                                              Shortlist
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => handleStatusChange(application, 'hired')}
+                                              disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
+                                            >
+                                              <UserCheck className="mr-2 h-4 w-4" />
+                                              Mark as Hired
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => handleStatusChange(application, 'rejected')}
+                                              disabled={isRejected}
+                                              className="text-destructive"
+                                            >
+                                              <XCircle className="mr-2 h-4 w-4" />
+                                              Reject
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem 
+                                              onClick={() => archiveMutation.mutate(application.id)}
+                                              disabled={archiveMutation.isPending}
+                                            >
+                                              <Archive className="mr-2 h-4 w-4" />
+                                              Archive
+                                            </DropdownMenuItem>
+                                          </>
+                                        );
+                                      })()}
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))}
