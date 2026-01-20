@@ -54,6 +54,8 @@ import {
   Building2,
   Plus,
   ExternalLink,
+  Lightbulb,
+  MoreHorizontal,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -144,12 +146,12 @@ function ApplicationPipelineChart({ data }: { data: { pending: number; reviewed:
 }
 
 // Horizontal Bar Chart for Industry data with custom labels
-function IndustryBarChart({ 
-  data, 
+function IndustryBarChart({
+  data,
   label = 'count',
   colorVar = '--chart-1',
   alternateColors = false,
-}: { 
+}: {
   data: { name: string; count: number }[];
   label?: string;
   colorVar?: string;
@@ -176,7 +178,7 @@ function IndustryBarChart({
     const { x = 0, y = 0, height = 0, value, index = 0 } = props;
     const displayValue = value && value.length > 18 ? value.slice(0, 18) + '...' : value;
     const fillColor = alternateColors ? textColors[index % 2] : 'white';
-    
+
     return (
       <text
         x={Number(x) + 8}
@@ -195,16 +197,16 @@ function IndustryBarChart({
   const renderCustomTooltip = (props: any) => {
     const { active, payload } = props;
     if (!active || !payload || !payload.length) return null;
-    
+
     const dataPoint = payload[0];
     const index = data.findIndex(d => d.name === dataPoint.payload.name);
     const indicatorColor = alternateColors ? barColors[index % 2] : `var(${colorVar})`;
-    
+
     return (
       <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
         <div className="flex items-center gap-2">
-          <div 
-            className="h-2.5 w-2.5 shrink-0 rounded-[2px]" 
+          <div
+            className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
             style={{ backgroundColor: indicatorColor }}
           />
           <span className="text-muted-foreground">{label}:</span>
@@ -264,9 +266,9 @@ function IndustryBarChart({
 }
 
 // Interactive Area Chart for daily views and applications
-function DailyActivityChart({ 
-  data 
-}: { 
+function DailyActivityChart({
+  data
+}: {
   data: { date: string; views: number; applications: number }[];
 }) {
   const [timeRange, setTimeRange] = useState('90d');
@@ -284,7 +286,7 @@ function DailyActivityChart({
 
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    
+
     const referenceDate = new Date();
     let daysToSubtract = 90;
     if (timeRange === '30d') {
@@ -292,10 +294,10 @@ function DailyActivityChart({
     } else if (timeRange === '7d') {
       daysToSubtract = 7;
     }
-    
+
     const startDate = new Date(referenceDate);
     startDate.setDate(startDate.getDate() - daysToSubtract);
-    
+
     return data.filter((item) => {
       const date = new Date(item.date);
       return date >= startDate;
@@ -420,13 +422,17 @@ function DailyActivityChart({
 }
 
 // Interactive Bar Chart for page views (Home vs Jobs)
-function PageViewsChart({ 
+// Interactive Bar Chart for page views (Home vs Jobs)
+function PageViewsChart({
   data,
-}: { 
+  timeRange,
+  onTimeRangeChange,
+}: {
   data: { date: string; home: number; jobs: number }[];
+  timeRange: string;
+  onTimeRangeChange: (value: string) => void;
 }) {
   const [activeChart, setActiveChart] = useState<'home' | 'jobs'>('home');
-  const [timeRange, setTimeRange] = useState('90d');
 
   const chartConfig: ChartConfig = {
     views: { label: 'Page Views' },
@@ -437,7 +443,7 @@ function PageViewsChart({
   // Filter data based on time range
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    
+
     const referenceDate = new Date();
     let daysToSubtract = 90;
     if (timeRange === '30d') {
@@ -445,10 +451,10 @@ function PageViewsChart({
     } else if (timeRange === '7d') {
       daysToSubtract = 7;
     }
-    
+
     const startDate = new Date(referenceDate);
     startDate.setDate(startDate.getDate() - daysToSubtract);
-    
+
     return data.filter((item) => {
       const date = new Date(item.date);
       return date >= startDate;
@@ -485,7 +491,7 @@ function PageViewsChart({
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-4 sm:py-5">
           <div className="flex items-center justify-between gap-3 sm:justify-start">
             <CardTitle className="text-base">Page Views</CardTitle>
-            <Select value={timeRange} onValueChange={setTimeRange}>
+            <Select value={timeRange} onValueChange={onTimeRangeChange}>
               <SelectTrigger className="w-[130px] h-8 text-xs" aria-label="Select time range">
                 <SelectValue placeholder="Last 3 months" />
               </SelectTrigger>
@@ -569,17 +575,154 @@ function PageViewsChart({
   );
 }
 
+function InsightCard({
+  percent,
+  trend,
+  description,
+  currentTotal,
+  previousTotal,
+  isLoading
+}: {
+  percent?: number;
+  trend?: 'increase' | 'decrease';
+  description?: string;
+  currentTotal?: number;
+  previousTotal?: number;
+  isLoading?: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-primary/5 p-6 h-full min-h-[300px] animate-pulse">
+        <div className="h-8 w-8 rounded-full bg-primary/20 mb-4" />
+        <div className="space-y-3">
+          <div className="h-12 w-24 bg-primary/20 rounded-lg" />
+          <div className="h-4 w-48 bg-primary/20 rounded-lg" />
+          <div className="h-4 w-32 bg-primary/20 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  const isPositive = trend !== 'decrease';
+  const displayPercent = percent ?? 0;
+
+  return (
+    <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-primary p-6 text-primary-foreground h-full min-h-[300px]">
+      {/* Background gradients/circles */}
+      <div className="absolute -top-12 -left-12 h-64 w-64 rounded-full bg-background/10 blur-3xl" />
+      <div className="absolute top-0 right-0 h-64 w-64 rounded-full bg-background/10 blur-3xl" />
+
+      <div className="relative z-10 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background/20 text-primary-foreground ring-1 ring-inset ring-background/20">
+            <Lightbulb className="h-5 w-5" />
+          </div>
+          <span className="font-medium text-lg">Insight</span>
+        </div>
+        <MoreHorizontal className="h-5 w-5 opacity-70 cursor-pointer hover:opacity-100" />
+      </div>
+
+      <div className="relative z-10 space-y-2 mt-8">
+        <div className="text-5xl font-bold tracking-tight">
+          {isPositive ? '+' : '-'}{displayPercent}%
+        </div>
+        <p className="text-base font-medium leading-relaxed opacity-90 max-w-[280px]">
+          {description || (isPositive
+            ? "forecasted increase in your traffic by the end of the current month"
+            : "decrease in traffic observed over the last month")}
+        </p>
+        {/* Comparison details */}
+        <p className="text-sm opacity-70 pt-2">
+          Current: {currentTotal?.toLocaleString() ?? 0} views • Previous: {previousTotal?.toLocaleString() ?? 0} views
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { hasPermission, isLoading: authLoading, user } = useAuth();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: pageViewStats } = usePageViewStats();
+  const { data: pageViewStats, isLoading: pageViewsLoading } = usePageViewStats();
+  const [pageViewTimeRange, setPageViewTimeRange] = useState('90d');
 
   useEffect(() => {
     setBreadcrumbs([
       { label: 'Dashboard' },
     ]);
   }, [setBreadcrumbs]);
+
+  // Calculate insight data - Compare current period vs previous equivalent period
+  const insightData = useMemo(() => {
+    const views = pageViewStats?.dailyPageViews || [];
+    if (views.length < 2) return null;
+
+    // Determine days based on selected time range
+    const referenceDate = new Date();
+    let daysToSubtract = 90;
+    if (pageViewTimeRange === '30d') {
+      daysToSubtract = 30;
+    } else if (pageViewTimeRange === '7d') {
+      daysToSubtract = 7;
+    }
+
+    // Current period: from (today - daysToSubtract) to today
+    const currentPeriodStart = new Date(referenceDate);
+    currentPeriodStart.setDate(currentPeriodStart.getDate() - daysToSubtract);
+
+    // Previous period: from (today - 2*daysToSubtract) to (today - daysToSubtract - 1)
+    const previousPeriodStart = new Date(referenceDate);
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - (2 * daysToSubtract));
+    const previousPeriodEnd = new Date(currentPeriodStart);
+    previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 1);
+
+    // Filter views for each period
+    const currentPeriodViews = views.filter((item) => {
+      const date = new Date(item.date);
+      return date >= currentPeriodStart && date <= referenceDate;
+    });
+
+    const previousPeriodViews = views.filter((item) => {
+      const date = new Date(item.date);
+      return date >= previousPeriodStart && date <= previousPeriodEnd;
+    });
+
+    // Calculate totals
+    const currentTotal = currentPeriodViews.reduce((acc, day) => acc + day.home + day.jobs, 0);
+    const previousTotal = previousPeriodViews.reduce((acc, day) => acc + day.home + day.jobs, 0);
+
+    let percent = 0;
+    let trend: 'increase' | 'decrease' = 'increase';
+
+    if (previousTotal === 0) {
+      // No previous data - show as new growth or no comparison available
+      percent = currentTotal > 0 ? 100 : 0;
+      trend = 'increase';
+    } else {
+      const diff = currentTotal - previousTotal;
+      percent = Math.round((diff / previousTotal) * 100);
+      trend = percent >= 0 ? 'increase' : 'decrease';
+      percent = Math.abs(percent);
+    }
+
+    // Dynamic description string
+    let rangeLabel = 'last 3 months';
+    if (pageViewTimeRange === '30d') rangeLabel = 'last 30 days';
+    if (pageViewTimeRange === '7d') rangeLabel = 'last 7 days';
+
+    const description = trend === 'increase'
+      ? `traffic increase compared to the previous ${rangeLabel.replace('last ', '')}`
+      : `traffic decrease compared to the previous ${rangeLabel.replace('last ', '')}`;
+
+    return {
+      percent,
+      trend,
+      description,
+      currentTotal,
+      previousTotal,
+    };
+  }, [pageViewStats, pageViewTimeRange]);
 
   // Process chart data
   const jobsByIndustryData = useMemo(() => {
@@ -643,8 +786,26 @@ export default function DashboardPage() {
       {/* Daily Activity Chart */}
       <DailyActivityChart data={stats.charts.dailyActivity || []} />
 
-      {/* Page Views Chart */}
-      <PageViewsChart data={pageViewStats?.dailyPageViews || []} />
+      {/* Page Views & Insight */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2">
+          <PageViewsChart
+            data={pageViewStats?.dailyPageViews || []}
+            timeRange={pageViewTimeRange}
+            onTimeRangeChange={setPageViewTimeRange}
+          />
+        </div>
+        <div className="md:col-span-1">
+          <InsightCard
+            percent={insightData?.percent}
+            trend={insightData?.trend}
+            description={insightData?.description}
+            currentTotal={insightData?.currentTotal}
+            previousTotal={insightData?.previousTotal}
+            isLoading={pageViewsLoading}
+          />
+        </div>
+      </div>
 
       {/* Application Pipeline & Recent Applications */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
@@ -730,8 +891,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <div className="min-w-[300px]">
-              <IndustryBarChart 
-                data={jobsByIndustryData} 
+              <IndustryBarChart
+                data={jobsByIndustryData}
                 label="Jobs"
                 alternateColors
               />
@@ -750,8 +911,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <div className="min-w-[300px]">
-              <IndustryBarChart 
-                data={applicationsByIndustryData} 
+              <IndustryBarChart
+                data={applicationsByIndustryData}
                 label="Applications"
                 alternateColors
               />

@@ -6,7 +6,7 @@ export const analyticsRoutes = new Elysia({ prefix: '/analytics' })
   // Track page view - increments daily count
   .post('/page-view', async ({ body, set }) => {
     const { page } = body as { page: 'HOME' | 'JOBS' };
-    
+
     // Get today's date (UTC, date only)
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -68,11 +68,11 @@ export const analyticsRoutes = new Elysia({ prefix: '/analytics' })
       return { error: 'Access denied' };
     }
 
-    // Get daily page views for the last 90 days
+    // Get daily page views for the last 180 days
     const dailyPageViews = await prisma.$queryRaw`
       WITH date_series AS (
         SELECT generate_series(
-          CURRENT_DATE - INTERVAL '89 days',
+          CURRENT_DATE - INTERVAL '179 days',
           CURRENT_DATE,
           '1 day'::interval
         )::date as date
@@ -81,13 +81,13 @@ export const analyticsRoutes = new Elysia({ prefix: '/analytics' })
         SELECT date, count
         FROM daily_page_views
         WHERE page = 'HOME'
-          AND date >= CURRENT_DATE - INTERVAL '89 days'
+          AND date >= CURRENT_DATE - INTERVAL '179 days'
       ),
       jobs_views AS (
         SELECT date, count
         FROM daily_page_views
         WHERE page = 'JOBS'
-          AND date >= CURRENT_DATE - INTERVAL '89 days'
+          AND date >= CURRENT_DATE - INTERVAL '179 days'
       )
       SELECT 
         ds.date::text as date,
@@ -99,13 +99,13 @@ export const analyticsRoutes = new Elysia({ prefix: '/analytics' })
       ORDER BY ds.date ASC
     `;
 
-    // Get totals for the last 90 days
+    // Get totals for the last 180 days
     const totals = await prisma.$queryRaw`
       SELECT 
         COALESCE(SUM(count) FILTER (WHERE page = 'HOME'), 0)::int as home_total,
         COALESCE(SUM(count) FILTER (WHERE page = 'JOBS'), 0)::int as jobs_total
       FROM daily_page_views
-      WHERE date >= CURRENT_DATE - INTERVAL '89 days'
+      WHERE date >= CURRENT_DATE - INTERVAL '179 days'
     ` as { home_total: number; jobs_total: number }[];
 
     return {

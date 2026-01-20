@@ -108,7 +108,7 @@ export default function ApplicationsPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { hasPermission, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedIndustry, setSelectedIndustry] = useState('all');
@@ -179,20 +179,20 @@ export default function ApplicationsPage() {
   // Group applications by industry (only applications with an industry)
   const applicationsByIndustry = useMemo(() => {
     const grouped: Record<string, { industry: string; applications: Application[] }> = {};
-    
+
     // Group applications by their job's industry name
     applications.forEach(app => {
       const industryName = app.job?.industry?.name;
-      
+
       // Skip applications without an industry
       if (!industryName) return;
-      
+
       if (!grouped[industryName]) {
         grouped[industryName] = { industry: industryName, applications: [] };
       }
       grouped[industryName].applications.push(app);
     });
-    
+
     // Sort by application count (most applications first)
     return Object.entries(grouped)
       .sort((a, b) => b[1].applications.length - a[1].applications.length);
@@ -351,8 +351,8 @@ export default function ApplicationsPage() {
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge 
-          variant={STATUS_CONFIG[row.original.status]?.variant || 'secondary'} 
+        <Badge
+          variant={STATUS_CONFIG[row.original.status]?.variant || 'secondary'}
           className={`gap-1 ${row.original.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
         >
           {STATUS_CONFIG[row.original.status]?.icon}
@@ -392,7 +392,7 @@ export default function ApplicationsPage() {
         const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
         const currentIndex = statusOrder.indexOf(application.status);
         const isRejected = application.status === 'rejected';
-        const isProcessing = 
+        const isProcessing =
           (archiveMutation.isPending && archiveMutation.variables === application.id) ||
           (updateMutation.isPending && selectedApplication?.id === application.id);
         const isSuccess = successId === application.id;
@@ -443,28 +443,28 @@ export default function ApplicationsPage() {
               {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleStatusChange(application, 'reviewed')}
                     disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
                   >
                     <Eye className="mr-2 h-4 w-4" />
                     Mark as Reviewed
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleStatusChange(application, 'shortlisted')}
                     disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
                   >
                     <Star className="mr-2 h-4 w-4" />
                     Shortlist
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleStatusChange(application, 'hired')}
                     disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
                   >
                     <UserCheck className="mr-2 h-4 w-4" />
                     Mark as Hired
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleStatusChange(application, 'rejected')}
                     disabled={isRejected}
                     className="text-destructive"
@@ -473,7 +473,7 @@ export default function ApplicationsPage() {
                     Reject
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => archiveMutation.mutate(application.id)}
                     disabled={archiveMutation.isPending}
                   >
@@ -536,8 +536,8 @@ export default function ApplicationsPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
@@ -548,51 +548,48 @@ export default function ApplicationsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              Across {applicationsByIndustry.length} industries
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pending}</div>
-            <p className="text-xs text-muted-foreground">Awaiting initial review</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Shortlisted</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.shortlisted}</div>
-            <p className="text-xs text-muted-foreground">Ready for interview</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Hired</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.hired}</div>
-            <p className="text-xs text-muted-foreground">Successfully placed</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Card */}
+      <Card className='p-2'>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-2 md:grid-cols-4">
+            {/* Total Applications */}
+            <div className="p-4 sm:p-6 border-r border-b md:border-b-0 border-border">
+              <p className="text-sm text-muted-foreground mb-1">Total Applications</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                Across {applicationsByIndustry.length} industries
+              </p>
+            </div>
+
+            {/* Pending Review */}
+            <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border">
+              <p className="text-sm text-muted-foreground mb-1">Pending Review</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.pending.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                Awaiting initial review
+              </p>
+            </div>
+
+            {/* Shortlisted */}
+            <div className="p-4 sm:p-6 border-r md:border-r border-border">
+              <p className="text-sm text-muted-foreground mb-1">Shortlisted</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.shortlisted.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                Ready for interview
+              </p>
+            </div>
+
+            {/* Hired */}
+            <div className="p-4 sm:p-6">
+              <p className="text-sm text-muted-foreground mb-1">Hired</p>
+              <p className="text-xl sm:text-2xl font-bold">{stats.hired.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                Successfully placed
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -660,14 +657,14 @@ export default function ApplicationsPage() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead 
+                        <TableHead
                           key={header.id}
                           className={
                             header.id === 'applicant' ? 'min-w-[180px]' :
-                            header.id === 'job' ? 'hidden sm:table-cell' :
-                            header.id === 'industry' ? 'hidden lg:table-cell' :
-                            header.id === 'createdAt' ? 'hidden md:table-cell' :
-                            header.id === 'actions' ? 'w-[50px]' : ''
+                              header.id === 'job' ? 'hidden sm:table-cell' :
+                                header.id === 'industry' ? 'hidden lg:table-cell' :
+                                  header.id === 'createdAt' ? 'hidden md:table-cell' :
+                                    header.id === 'actions' ? 'w-[50px]' : ''
                           }
                         >
                           {header.isPlaceholder
@@ -682,12 +679,12 @@ export default function ApplicationsPage() {
                   {table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell 
+                        <TableCell
                           key={cell.id}
                           className={
                             cell.column.id === 'job' ? 'hidden sm:table-cell' :
-                            cell.column.id === 'industry' ? 'hidden lg:table-cell' :
-                            cell.column.id === 'createdAt' ? 'hidden md:table-cell' : ''
+                              cell.column.id === 'industry' ? 'hidden lg:table-cell' :
+                                cell.column.id === 'createdAt' ? 'hidden md:table-cell' : ''
                           }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -705,7 +702,7 @@ export default function ApplicationsPage() {
         <Accordion type="multiple" defaultValue={applicationsByIndustry.slice(0, 3).map(([id]) => id)} className="space-y-4">
           {applicationsByIndustry.map(([industryId, { industry, applications: industryApps }]) => {
             const industryStats = getIndustryStats(industryApps);
-            
+
             return (
               <AccordionItem key={industryId} value={industryId} className="border rounded-lg bg-card">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
@@ -761,8 +758,8 @@ export default function ApplicationsPage() {
                               <p className="font-medium truncate">
                                 {application.firstName} {application.lastName}
                               </p>
-                              <Badge 
-                                variant={STATUS_CONFIG[application.status]?.variant || 'secondary'} 
+                              <Badge
+                                variant={STATUS_CONFIG[application.status]?.variant || 'secondary'}
                                 className={`gap-1 ${application.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
                               >
                                 {STATUS_CONFIG[application.status]?.icon}
@@ -788,11 +785,11 @@ export default function ApplicationsPage() {
                             </Link>
                           </Button>
                           {(() => {
-                            const isProcessing = 
+                            const isProcessing =
                               (archiveMutation.isPending && archiveMutation.variables === application.id) ||
                               (updateMutation.isPending && selectedApplication?.id === application.id);
                             const isSuccess = successId === application.id;
-                            
+
                             return (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -843,31 +840,31 @@ export default function ApplicationsPage() {
                                         const statusOrder = ['pending', 'reviewed', 'shortlisted', 'hired'];
                                         const currentIndex = statusOrder.indexOf(application.status);
                                         const isRejected = application.status === 'rejected';
-                                        
+
                                         return (
                                           <>
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                               onClick={() => handleStatusChange(application, 'reviewed')}
                                               disabled={isRejected || currentIndex >= statusOrder.indexOf('reviewed')}
                                             >
                                               <Eye className="mr-2 h-4 w-4" />
                                               Mark as Reviewed
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                               onClick={() => handleStatusChange(application, 'shortlisted')}
                                               disabled={isRejected || currentIndex >= statusOrder.indexOf('shortlisted')}
                                             >
                                               <Star className="mr-2 h-4 w-4" />
                                               Shortlist
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                               onClick={() => handleStatusChange(application, 'hired')}
                                               disabled={isRejected || currentIndex >= statusOrder.indexOf('hired')}
                                             >
                                               <UserCheck className="mr-2 h-4 w-4" />
                                               Mark as Hired
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                               onClick={() => handleStatusChange(application, 'rejected')}
                                               disabled={isRejected}
                                               className="text-destructive"
@@ -876,7 +873,7 @@ export default function ApplicationsPage() {
                                               Reject
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                               onClick={() => archiveMutation.mutate(application.id)}
                                               disabled={archiveMutation.isPending}
                                             >
@@ -915,8 +912,8 @@ export default function ApplicationsPage() {
           <div className="space-y-4 pt-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">New Status:</span>
-              <Badge 
-                variant={STATUS_CONFIG[newStatus]?.variant || 'secondary'} 
+              <Badge
+                variant={STATUS_CONFIG[newStatus]?.variant || 'secondary'}
                 className={`gap-1 ${newStatus === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
               >
                 {STATUS_CONFIG[newStatus]?.icon}
