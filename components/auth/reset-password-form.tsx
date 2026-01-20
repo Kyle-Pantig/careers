@@ -136,7 +136,7 @@ export function ResetPasswordForm({
               {...register('password')}
               disabled={isLoading}
               className="pr-10"
-              autoComplete="new-password"
+              autoComplete="off"
             />
             <button
               type="button"
@@ -166,7 +166,7 @@ export function ResetPasswordForm({
               {...register('confirmPassword')}
               disabled={isLoading}
               className="pr-10"
-              autoComplete="new-password"
+              autoComplete="off"
             />
             <button
               type="button"

@@ -123,7 +123,6 @@ export function SignupForm({
               placeholder="John"
               {...register('firstName')}
               disabled={isLoading}
-              autoComplete="off"
             />
             {errors.firstName && (
               <p className="text-destructive text-sm">{errors.firstName.message}</p>
@@ -137,7 +136,6 @@ export function SignupForm({
               placeholder="Doe"
               {...register('lastName')}
               disabled={isLoading}
-              autoComplete="off"
             />
             {errors.lastName && (
               <p className="text-destructive text-sm">{errors.lastName.message}</p>
@@ -153,7 +151,6 @@ export function SignupForm({
             placeholder="m@example.com"
             {...register('email')}
             disabled={isLoading}
-            autoComplete="off"
           />
           {errors.email && (
             <p className="text-destructive text-sm">{errors.email.message}</p>
@@ -169,7 +166,7 @@ export function SignupForm({
               {...register('password')}
               disabled={isLoading}
               className="pr-10"
-              autoComplete="new-password"
+              autoComplete="off"
             />
             <button
               type="button"
@@ -198,7 +195,7 @@ export function SignupForm({
               {...register('confirmPassword')}
               disabled={isLoading}
               className="pr-10"
-              autoComplete="new-password"
+              autoComplete="off"
             />
             <button
               type="button"

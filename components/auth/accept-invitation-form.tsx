@@ -239,7 +239,6 @@ export function AcceptInvitationForm({
                   placeholder="John"
                   {...register('firstName')}
                   disabled={isSubmitting}
-                  autoComplete="off"
                 />
                 {errors.firstName && (
                   <p className="text-destructive text-sm">{errors.firstName.message}</p>
@@ -252,7 +251,6 @@ export function AcceptInvitationForm({
                   placeholder="Doe"
                   {...register('lastName')}
                   disabled={isSubmitting}
-                  autoComplete="off"
                 />
                 {errors.lastName && (
                   <p className="text-destructive text-sm">{errors.lastName.message}</p>
@@ -269,7 +267,7 @@ export function AcceptInvitationForm({
                   type={showPassword ? 'text' : 'password'}
                   {...register('password')}
                   disabled={isSubmitting}
-                  autoComplete="new-password"
+                  autoComplete="off"
                   className="pr-10"
                 />
                 <button
@@ -295,7 +293,7 @@ export function AcceptInvitationForm({
                   type={showConfirmPassword ? 'text' : 'password'}
                   {...register('confirmPassword')}
                   disabled={isSubmitting}
-                  autoComplete="new-password"
+                  autoComplete="off"
                   className="pr-10"
                 />
                 <button

@@ -313,7 +313,6 @@ export function LoginForm({
                   placeholder="m@example.com"
                   {...passwordForm.register('email')}
                   disabled={isLoading}
-                  autoComplete="off"
                 />
                 {passwordForm.formState.errors.email && (
                   <p className="text-destructive text-sm">{passwordForm.formState.errors.email.message}</p>
@@ -337,7 +336,7 @@ export function LoginForm({
                     {...passwordForm.register('password')}
                     disabled={isLoading}
                     className="pr-10"
-                    autoComplete="new-password"
+                    autoComplete="off"
                   />
                   <button
                     type="button"

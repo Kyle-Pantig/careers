@@ -3,16 +3,16 @@ import { prisma } from '../lib/prisma';
 import { hashPassword, verifyPassword, generateToken, verifyToken, generateEmailToken } from '../lib/auth';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail, sendUserInvitationEmail } from '../lib/email';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const EMAIL_COOLDOWN_SECONDS = 60; // 1 minute cooldown between email requests
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 
 // Cookie options
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: IS_PRODUCTION,
-  sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+  sameSite: IS_PRODUCTION ? 'none' : 'lax',
   path: '/',
   maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
 } as const;
