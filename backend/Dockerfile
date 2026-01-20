@@ -21,7 +21,9 @@ COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
 # Generate Prisma Client
-RUN bunx prisma generate --schema=prisma/schema.prisma
+# Generate Prisma Client
+RUN ls -R
+RUN bunx prisma generate --schema=./prisma/schema.prisma
 
 # [Optional] Run tests here if you have them
 # RUN bun test
