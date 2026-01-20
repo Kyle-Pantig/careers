@@ -3,16 +3,21 @@ import { prisma } from '../lib/prisma';
 import { hashPassword, verifyPassword, generateToken, verifyToken, generateEmailToken } from '../lib/auth';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail, sendUserInvitationEmail } from '../lib/email';
 
-
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const EMAIL_COOLDOWN_SECONDS = 60; // 1 minute cooldown between email requests
 
+// Better detection for cross-site cookie requirements (e.g. Vercel -> Railway)
+// If frontend URL is NOT localhost, we likely need cross-site cookies
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const IS_CROSS_SITE = IS_PRODUCTION || !!(FRONTEND_URL && !FRONTEND_URL.includes('localhost') && !FRONTEND_URL.includes('127.0.0.1'));
 
 // Cookie options
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: IS_PRODUCTION,
-  sameSite: IS_PRODUCTION ? 'none' : 'lax',
+  // Secure is REQUIRED for SameSite='none'
+  secure: IS_CROSS_SITE,
+  // Cross-site auth requires 'none'
+  sameSite: IS_CROSS_SITE ? 'none' : 'lax',
   path: '/',
   maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
 } as const;
