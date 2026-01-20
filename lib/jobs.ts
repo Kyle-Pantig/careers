@@ -8,6 +8,8 @@ export type ShiftType = 'DAY' | 'NIGHT' | 'ROTATING' | 'FLEXIBLE';
 export type SalaryPeriod = 'HOURLY' | 'MONTHLY' | 'YEARLY';
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'PHP' | 'JPY' | 'AUD' | 'CAD' | 'SGD' | 'INR' | 'CNY';
 
+import type { CustomApplicationField } from '@/shared/validators';
+
 export interface Job {
   id: string;
   jobNumber: string;
@@ -28,6 +30,7 @@ export interface Job {
   isPublished: boolean;
   publishedAt: string | null;
   expiresAt: string | null;
+  customApplicationFields?: CustomApplicationField[] | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -52,6 +55,7 @@ export interface CreateJobData {
   salaryPeriod?: SalaryPeriod;
   isPublished?: boolean;
   expiresAt?: string;
+  customApplicationFields?: CustomApplicationField[];
 }
 
 export interface UpdateJobData extends CreateJobData {

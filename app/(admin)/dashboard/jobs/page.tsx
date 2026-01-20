@@ -445,7 +445,7 @@ export default function JobsPage() {
       </Card>
 
       {/* Jobs Table */}
-      <Card>
+      <Card className='py-0'>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">

@@ -8,21 +8,22 @@ export const savedJobsKeys = {
 };
 
 // Get all saved jobs
-export function useSavedJobs() {
+export function useSavedJobs(enabled: boolean = true) {
   return useQuery({
     queryKey: savedJobsKeys.all,
     queryFn: getSavedJobs,
     select: (data) => data.savedJobs,
+    enabled,
   });
 }
 
 // Check if a specific job is saved
-export function useCheckJobSaved(jobId: string) {
+export function useCheckJobSaved(jobId: string, enabled: boolean = true) {
   return useQuery({
     queryKey: savedJobsKeys.check(jobId),
     queryFn: () => checkJobSaved(jobId),
     select: (data) => data.isSaved,
-    enabled: !!jobId,
+    enabled: !!jobId && enabled,
   });
 }
 

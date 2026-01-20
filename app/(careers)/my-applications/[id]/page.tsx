@@ -402,6 +402,44 @@ export default function ApplicationDetailPage() {
               </div>
             </div>
 
+            {/* Custom Application Fields */}
+            {(() => {
+              const customFields = (application.job?.customApplicationFields ?? []) as Array<{ key: string; label: string; type: string }>;
+              const values = application.customFieldValues || {};
+              const fieldsWithValues = customFields.filter((f) => {
+                const v = values[f.key];
+                return v !== undefined && v !== null && v !== '';
+              });
+              
+              if (fieldsWithValues.length === 0) return null;
+              
+              return (
+                <>
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    <p className="text-sm font-medium text-muted-foreground">Additional Information</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {fieldsWithValues.map((field) => {
+                        const value = values[field.key];
+                        return (
+                          <div key={field.key} className="space-y-1">
+                            <p className="text-sm text-muted-foreground">{field.label}</p>
+                            <p className="font-medium break-words">
+                              {field.type === 'textarea' ? (
+                                <span className="whitespace-pre-wrap">{String(value)}</span>
+                              ) : (
+                                String(value)
+                              )}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
             <Separator className="my-6" />
 
             {/* Resume Section */}

@@ -200,6 +200,9 @@ model Job {
   isPublished       Boolean      @default(false)
   publishedAt       DateTime?
   expiresAt         DateTime?
+  // Custom fields for the application form: [{ key, label, type, required, options? }]
+  // type: text | textarea | number | select. For select: options is string[] e.g. ["Yes","No"]
+  customApplicationFields Json?
 
   industry     Industry @relation(fields: [industryId], references: [id])
   applications JobApplication[]
@@ -246,7 +249,10 @@ model JobApplication {
   // Resume stored in Supabase storage
   resumeUrl    String   // URL to the resume in storage
   resumeFileName String // Original filename
-  
+
+  // Custom field answers: { "fieldKey": value } (string or number)
+  customFieldValues Json?
+
   status       String   @default("pending") // pending, reviewed, shortlisted, rejected, hired
   notes        String?  // Admin notes
   

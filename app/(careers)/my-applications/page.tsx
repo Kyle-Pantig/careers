@@ -391,8 +391,8 @@ export default function MyApplicationsPage() {
     enabled: !!user?.id,
   });
 
-  // Fetch saved jobs
-  const { data: savedJobs = [], isLoading: loadingSavedJobs } = useSavedJobs();
+  // Fetch saved jobs - only if user is authenticated
+  const { data: savedJobs = [], isLoading: loadingSavedJobs } = useSavedJobs(!!user && !isAdminOrStaff);
   const unsaveJobMutation = useUnsaveJob();
 
   const applications = applicationsData?.applications || [];

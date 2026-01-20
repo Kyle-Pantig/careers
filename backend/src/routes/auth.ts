@@ -23,9 +23,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     '/register',
     async ({ body, set }) => {
       const { firstName, lastName, email, password } = body;
+      const normalizedEmail = email.toLowerCase();
 
       // Check if user exists
-      const existingUser = await prisma.user.findUnique({ where: { email } });
+      const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
       if (existingUser) {
         set.status = 400;
         return { error: 'An account with this email address already exists. Please try logging in or use a different email.' };
@@ -41,13 +42,12 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: { name: 'user', description: 'Default user role' },
         });
       }
-
       // Create user
       const user = await prisma.user.create({
         data: {
           firstName,
           lastName,
-          email,
+          email: normalizedEmail,
           passwordHash,
           roles: {
             create: { roleId: userRole.id },
@@ -58,13 +58,24 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         },
       });
 
+      // Link any existing guest applications that used this email
+      await prisma.jobApplication.updateMany({
+        where: {
+          email: normalizedEmail,
+          userId: null,
+        },
+        data: {
+          userId: user.id,
+        },
+      });
+
       // Create verification token
       const token = generateEmailToken();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       await prisma.emailToken.create({
         data: {
-          email,
+          email: normalizedEmail,
           token,
           type: 'VERIFICATION',
           expiresAt,
@@ -103,10 +114,11 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     '/login',
     async ({ body, set, cookie }) => {
       const { email, password } = body;
+      const normalizedEmail = email.toLowerCase();
 
       // Find user
       const user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: normalizedEmail },
         include: {
           roles: { include: { role: true } },
         },
@@ -231,11 +243,12 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     '/resend-verification',
     async ({ body, set }) => {
       const { email } = body;
+      const normalizedEmail = email.toLowerCase();
 
       // Generic message to prevent email enumeration
       const genericMessage = 'We have sent a verification link to your email address.';
 
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
       // Return same message whether user exists or not (security best practice)
       if (!user || user.emailVerified) {
@@ -244,7 +257,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       // Check rate limit - find most recent token for this email
       const recentToken = await prisma.emailToken.findFirst({
-        where: { email, type: 'VERIFICATION' },
+        where: { email: normalizedEmail, type: 'VERIFICATION' },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -263,7 +276,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       // Delete existing verification tokens
       await prisma.emailToken.deleteMany({
-        where: { email, type: 'VERIFICATION' },
+        where: { email: normalizedEmail, type: 'VERIFICATION' },
       });
 
       // Create new verification token
@@ -272,7 +285,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       await prisma.emailToken.create({
         data: {
-          email,
+          email: normalizedEmail,
           token,
           type: 'VERIFICATION',
           expiresAt,
@@ -300,13 +313,14 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     '/forgot-password',
     async ({ body, set }) => {
       const { email } = body;
+      const normalizedEmail = email.toLowerCase();
 
       // Generic message to prevent email enumeration
       const genericMessage = 'We have sent password reset instructions to your email address.';
 
       // Check rate limit first - even if user doesn't exist (prevent enumeration)
       const recentToken = await prisma.emailToken.findFirst({
-        where: { email, type: 'PASSWORD_RESET' },
+        where: { email: normalizedEmail, type: 'PASSWORD_RESET' },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -323,7 +337,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         }
       }
 
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
       // Return same message whether user exists or not (security best practice)
       if (!user) {
@@ -332,7 +346,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       // Delete existing reset tokens
       await prisma.emailToken.deleteMany({
-        where: { email, type: 'PASSWORD_RESET' },
+        where: { email: normalizedEmail, type: 'PASSWORD_RESET' },
       });
 
       // Create reset token
@@ -341,7 +355,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       await prisma.emailToken.create({
         data: {
-          email,
+          email: normalizedEmail,
           token,
           type: 'PASSWORD_RESET',
           expiresAt,
@@ -412,13 +426,14 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     '/magic-link/request',
     async ({ body, set }) => {
       const { email } = body;
+      const normalizedEmail = email.toLowerCase();
 
       // Generic message to prevent email enumeration
       const genericMessage = 'We have sent a sign-in link to your email address.';
 
       // Check rate limit first - even if user doesn't exist (prevent enumeration)
       const recentToken = await prisma.emailToken.findFirst({
-        where: { email, type: 'MAGIC_LINK' },
+        where: { email: normalizedEmail, type: 'MAGIC_LINK' },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -435,7 +450,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         }
       }
 
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
       // User must have an account to use magic link
       if (!user) {
@@ -450,7 +465,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       // Delete existing magic link tokens for this user
       await prisma.emailToken.deleteMany({
-        where: { email, type: 'MAGIC_LINK' },
+        where: { email: normalizedEmail, type: 'MAGIC_LINK' },
       });
 
       // Create magic link token (expires in 15 minutes)
@@ -459,7 +474,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
       await prisma.emailToken.create({
         data: {
-          email,
+          email: normalizedEmail,
           token,
           type: 'MAGIC_LINK',
           expiresAt,
@@ -1029,6 +1044,8 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           return { error: 'No email from Google' };
         }
 
+        const normalizedEmail = email.toLowerCase();
+
         // Check if Google account is already linked to a user
         const existingAccount = await (prisma as any).account.findUnique({
           where: {
@@ -1088,7 +1105,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
         // Check if a user with this email exists (credentials account)
         const existingUser = await (prisma.user.findUnique as any)({
-          where: { email },
+          where: { email: normalizedEmail },
           include: {
             accounts: true,
             roles: { include: { role: true } },
@@ -1113,7 +1130,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
 
           await (prisma.emailToken.create as any)({
             data: {
-              email,
+              email: normalizedEmail,
               token: linkToken,
               type: 'ACCOUNT_LINK',
               expiresAt,
@@ -1146,7 +1163,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           data: {
             firstName: given_name || name?.split(' ')[0] || 'User',
             lastName: family_name || name?.split(' ').slice(1).join(' ') || '',
-            email,
+            email: normalizedEmail,
             emailVerified: email_verified || true, // Google accounts are verified
             passwordHash: null,
             roles: {
@@ -1161,6 +1178,17 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
           },
           include: {
             roles: { include: { role: true } },
+          },
+        });
+
+        // Link any existing guest applications that used this email
+        await prisma.jobApplication.updateMany({
+          where: {
+            email: normalizedEmail,
+            userId: null,
+          },
+          data: {
+            userId: newUser.id,
           },
         });
 
@@ -1657,6 +1685,17 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         },
         include: {
           roles: { include: { role: true } },
+        },
+      });
+
+      // Link any existing guest applications that used this email
+      await prisma.jobApplication.updateMany({
+        where: {
+          email: updatedUser.email.toLowerCase(),
+          userId: null,
+        },
+        data: {
+          userId: updatedUser.id,
         },
       });
 

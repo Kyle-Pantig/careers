@@ -18,7 +18,9 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
   .post(
     '/',
     async ({ body, set }) => {
-      const { jobNumber, firstName, lastName, email, contactNumber, address, resume, userId } = body;
+      const { jobNumber, firstName, lastName, email, contactNumber, address, resume, userId, customFieldValues } = body;
+
+      const normalizedEmail = email.toLowerCase();
 
       // Find the job
       const job = await prisma.job.findUnique({
@@ -41,21 +43,16 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
         return { error: 'This job posting has expired' };
       }
 
-      // Check for existing application
+      // Check for existing application (by email or user)
       const existingApplication = await prisma.jobApplication.findFirst({
         where: {
           jobId: job.id,
           OR: [
-            { email: email.toLowerCase() } as Record<string, unknown>,
+            { email: normalizedEmail } as Record<string, unknown>,
             ...(userId ? [{ userId }] : []),
           ],
         },
       });
-
-      if (existingApplication) {
-        set.status = 400;
-        return { error: 'You have already applied for this position' };
-      }
 
       // Upload resume
       let resumeUrl: string;
@@ -66,30 +63,112 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
         return { error: error instanceof Error ? error.message : 'Failed to upload resume' };
       }
 
-      // Create application
-      const application = await (prisma.jobApplication.create as Function)({
-        data: {
-          jobId: job.id,
-          userId: userId || undefined,
-          firstName,
-          lastName,
-          email: email.toLowerCase(),
-          contactNumber,
-          address,
-          resumeUrl,
-          resumeFileName: resume.name,
-          status: 'pending',
-        },
-        include: {
-          job: {
-            select: {
-              title: true,
-              jobNumber: true,
-              location: true,
+      // Parse custom field values if provided
+      // Accept either a JSON string (from FormData) or a plain object (if framework already parsed it)
+      let parsedCustomFieldValues: Record<string, unknown> | undefined;
+      if (customFieldValues) {
+        const raw = customFieldValues as unknown;
+
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              parsedCustomFieldValues = parsed as Record<string, unknown>;
+            }
+          } catch {
+            // Ignore parse errors and proceed without custom field values
+          }
+        } else if (typeof raw === 'object') {
+          parsedCustomFieldValues = raw as Record<string, unknown>;
+        }
+      }
+
+      // If an application exists and is rejected, allow re-application by updating it
+      let application: {
+        id: string;
+        status: string;
+        createdAt: Date;
+        job: { title: string; jobNumber: string; location: string };
+      };
+
+      if (existingApplication && existingApplication.status === 'rejected') {
+        application = (await (prisma.jobApplication.update as Function)({
+          where: { id: existingApplication.id },
+          data: {
+            userId: userId || existingApplication.userId || undefined,
+            firstName,
+            lastName,
+            email: normalizedEmail,
+            contactNumber,
+            address,
+            resumeUrl,
+            resumeFileName: resume.name,
+            // Always persist whatever we receive for customFieldValues
+            customFieldValues:
+              parsedCustomFieldValues !== undefined
+                ? parsedCustomFieldValues
+                : (customFieldValues as any),
+            status: 'pending',
+            notes: null,
+            archivedAt: null,
+          },
+          include: {
+            job: {
+              select: {
+                title: true,
+                jobNumber: true,
+                location: true,
+              },
             },
           },
-        },
-      }) as { id: string; status: string; createdAt: Date; job: { title: string; jobNumber: string; location: string } };
+        })) as {
+          id: string;
+          status: string;
+          createdAt: Date;
+          job: { title: string; jobNumber: string; location: string };
+        };
+      } else {
+        // If an application exists and is not rejected, block duplicate
+        if (existingApplication) {
+          set.status = 400;
+          return { error: 'You have already applied for this position' };
+        }
+
+        // Create new application
+        application = (await (prisma.jobApplication.create as Function)({
+          data: {
+            jobId: job.id,
+            userId: userId || undefined,
+            firstName,
+            lastName,
+            email: normalizedEmail,
+            contactNumber,
+            address,
+            resumeUrl,
+            resumeFileName: resume.name,
+            // Always persist whatever we receive for customFieldValues
+            customFieldValues:
+              parsedCustomFieldValues !== undefined
+                ? parsedCustomFieldValues
+                : (customFieldValues as any),
+            status: 'pending',
+          },
+          include: {
+            job: {
+              select: {
+                title: true,
+                jobNumber: true,
+                location: true,
+              },
+            },
+          },
+        })) as {
+          id: string;
+          status: string;
+          createdAt: Date;
+          job: { title: string; jobNumber: string; location: string };
+        };
+      }
 
       // Send confirmation email (don't wait, don't fail if email fails)
       sendApplicationConfirmationEmail({
@@ -124,6 +203,7 @@ export const applicationRoutes = new Elysia({ prefix: '/applications' })
         address: t.String({ minLength: 1 }),
         resume: t.File(),
         userId: t.Optional(t.Nullable(t.String())),
+        customFieldValues: t.Optional(t.Any()),
       }),
     }
   )
@@ -410,6 +490,7 @@ prisma.jobApplication.findMany({
               salaryMax: true,
               salaryPeriod: true,
               salaryCurrency: true,
+              customApplicationFields: true,
               industry: {
                 select: {
                   name: true,
@@ -462,6 +543,7 @@ prisma.jobApplication.findMany({
               salaryMax: true,
               salaryPeriod: true,
               salaryCurrency: true,
+              customApplicationFields: true,
               industry: {
                 select: {
                   name: true,
@@ -719,6 +801,10 @@ prisma.jobApplication.findMany({
             ...(email ? [{ email: email.toLowerCase() } as Record<string, unknown>] : []),
             ...(userId ? [{ userId }] : []),
           ],
+          // Only treat as "applied" if not rejected
+          status: {
+            not: 'rejected',
+          },
         },
       });
 

@@ -1,5 +1,47 @@
 import { z } from 'zod';
 
+// Custom application field types: text, textarea, number, select (e.g. Yes/No)
+export const customFieldTypeSchema = z.enum(['text', 'textarea', 'number', 'select']);
+export type CustomFieldType = z.infer<typeof customFieldTypeSchema>;
+
+export const customApplicationFieldSchema = z
+  .object({
+    key: z
+      .string()
+      .min(1, 'Key is required')
+      .max(80)
+      .regex(/^[a-z0-9_]+$/, 'Key: lowercase letters, numbers, underscores only'),
+    label: z.string().min(1, 'Label is required').max(200),
+    type: customFieldTypeSchema,
+    required: z.boolean(),
+    // For type "select": options e.g. ["Yes", "No"]. Required when type is select.
+    options: z.array(z.string().min(1)).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.type === 'select') {
+        return Array.isArray(data.options) && data.options.length >= 1;
+      }
+      return true;
+    },
+    { message: 'Select fields must have at least one option', path: ['options'] }
+  );
+
+export type CustomApplicationField = z.infer<typeof customApplicationFieldSchema>;
+
+export const customApplicationFieldsSchema = z
+  .array(customApplicationFieldSchema)
+  .optional()
+  .default([]);
+
+// Labels for custom field types (admin UI)
+export const CUSTOM_FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
+  text: 'Text (single line)',
+  textarea: 'Textarea (multi-line)',
+  number: 'Number',
+  select: 'Select (e.g. Yes / No)',
+};
+
 export const workTypeSchema = z.enum(['ONSITE', 'REMOTE', 'HYBRID']);
 export const jobTypeSchema = z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'FREELANCE', 'INTERNSHIP', 'TEMPORARY']);
 export const shiftTypeSchema = z.enum(['DAY', 'NIGHT', 'ROTATING', 'FLEXIBLE']);
@@ -22,6 +64,7 @@ export const jobSchema = z.object({
   salaryPeriod: salaryPeriodSchema,
   isPublished: z.boolean(),
   expiresAt: z.string().optional().nullable(),
+  customApplicationFields: customApplicationFieldsSchema,
 });
 
 export const industrySchema = z.object({

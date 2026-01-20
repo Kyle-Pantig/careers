@@ -10,7 +10,6 @@ import { MaxWidthLayout } from '@/components/careers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const fadeInUp = {
@@ -74,8 +73,8 @@ export default function JobDetailPage() {
 
   const { data: job, isLoading, isError } = useJobByNumber(jobNumber);
   
-  // Saved job functionality
-  const { data: isSaved = false } = useCheckJobSaved(job?.id || '');
+  // Saved job functionality - only check if user is authenticated
+  const { data: isSaved = false } = useCheckJobSaved(job?.id || '', !!user && !isAdminOrStaff);
   const saveJobMutation = useSaveJob();
   const unsaveJobMutation = useUnsaveJob();
   const isSaving = saveJobMutation.isPending || unsaveJobMutation.isPending;
@@ -325,87 +324,77 @@ export default function JobDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          {/* Job Details Card */}
+          {/* Job Details Card - 2 columns when page is single column (below lg), 1 column in sidebar (lg+) */}
           <Card>
             <CardHeader>
               <h2 className="text-lg font-semibold">Job Details</h2>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Hash className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Job Number</p>
-                  <p className="text-sm text-muted-foreground font-mono">{job.jobNumber}</p>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-x-6 gap-y-4">
+                <div className="flex items-start gap-3">
+                  <Hash className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Job Number</p>
+                    <p className="text-sm text-muted-foreground font-mono truncate">{job.jobNumber}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              {job.publishedAt && (
-                <>
+                {job.publishedAt && (
                   <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">Posted</p>
                       <p className="text-sm text-muted-foreground">{formatDate(job.publishedAt)}</p>
                     </div>
                   </div>
-                  <Separator />
-                </>
-              )}
-              <div className="flex items-start gap-3">
-                <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Industry</p>
-                  <p className="text-sm text-muted-foreground">{job.industry?.name || '-'}</p>
+                )}
+                <div className="flex items-start gap-3">
+                  <Building2 className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Industry</p>
+                    <p className="text-sm text-muted-foreground truncate">{job.industry?.name || '-'}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Location</p>
-                  <p className="text-sm text-muted-foreground">{job.location}</p>
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-sm text-muted-foreground truncate">{job.location}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Work Type</p>
-                  <p className="text-sm text-muted-foreground">{WORK_TYPE_LABELS[job.workType]}</p>
+                <div className="flex items-start gap-3">
+                  <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Work Type</p>
+                    <p className="text-sm text-muted-foreground">{WORK_TYPE_LABELS[job.workType]}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Job Type</p>
-                  <p className="text-sm text-muted-foreground">{JOB_TYPE_LABELS[job.jobType]}</p>
+                <div className="flex items-start gap-3">
+                  <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Job Type</p>
+                    <p className="text-sm text-muted-foreground">{JOB_TYPE_LABELS[job.jobType]}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Shift</p>
-                  <p className="text-sm text-muted-foreground">{SHIFT_TYPE_LABELS[job.shiftType]}</p>
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Shift</p>
+                    <p className="text-sm text-muted-foreground">{SHIFT_TYPE_LABELS[job.shiftType]}</p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className="flex items-start gap-3">
-                <Award className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Experience</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatExperience(job.experienceMin, job.experienceMax)}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <Award className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Experience</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatExperience(job.experienceMin, job.experienceMax)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              {(job.salaryMin || job.salaryMax) && (
-                <>
-                  <Separator />
+                {(job.salaryMin || job.salaryMax) && (
                   <div className="flex items-start gap-3">
-                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
+                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">Salary</p>
                       {user ? (
                         <p className="text-sm text-muted-foreground">{formatSalary()}</p>
@@ -419,20 +408,17 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   </div>
-                </>
-              )}
-              {job.expiresAt && (
-                <>
-                  <Separator />
+                )}
+                {job.expiresAt && (
                   <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">Application Deadline</p>
                       <p className="text-sm text-muted-foreground">{formatDate(job.expiresAt)}</p>
                     </div>
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>

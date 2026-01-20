@@ -118,8 +118,8 @@ export default function JobsPage() {
   const { data: jobsData, isLoading: loadingJobs } = useJobs({ limit: 100 });
   const { data: industries = [], isLoading: loadingIndustries } = useIndustries();
   
-  // Saved jobs
-  const { data: savedJobs = [] } = useSavedJobs();
+  // Saved jobs - only fetch if user is authenticated and not admin/staff
+  const { data: savedJobs = [] } = useSavedJobs(!!user && !isAdminOrStaff);
   const saveJobMutation = useSaveJob();
   const unsaveJobMutation = useUnsaveJob();
   

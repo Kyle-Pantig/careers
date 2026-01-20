@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -15,7 +15,15 @@ import { MaxWidthLayout } from '@/components/careers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -32,15 +40,20 @@ import {
 } from 'lucide-react';
 import { WORK_TYPE_LABELS, JOB_TYPE_LABELS } from '@/shared/validators';
 
-const applicationSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Please enter a valid email'),
-  contactNumber: z.string().min(1, 'Contact number is required'),
-  address: z.string().min(1, 'Address is required'),
-});
+const applicationSchema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Please enter a valid email'),
+    contactNumber: z.string().min(1, 'Contact number is required'),
+    address: z.string().min(1, 'Address is required'),
+  })
+  // Allow dynamic custom fields to pass through validation so they are available in onSubmit
+  .extend({
+    custom: z.record(z.string(), z.unknown()).optional(),
+  });
 
-type ApplicationFormData = z.infer<typeof applicationSchema>;
+type ApplicationFormValues = z.infer<typeof applicationSchema>;
 
 export default function JobApplyPage() {
   const params = useParams();
@@ -66,12 +79,15 @@ export default function JobApplyPage() {
   const [loadingProfileResume, setLoadingProfileResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const customFields = (job?.customApplicationFields ?? []) as Array<{ key: string; label: string; type: string; required: boolean; options?: string[] }>;
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
-  } = useForm<ApplicationFormData>({
+  } = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationSchema),
     defaultValues: {
       firstName: '',
@@ -213,10 +229,28 @@ export default function JobApplyPage() {
     }
   };
 
-  const onSubmit = async (data: ApplicationFormData) => {
+  const onSubmit = async (data: ApplicationFormValues) => {
     if (!resumeFile) {
       setResumeError('Please upload your resume');
       return;
+    }
+
+    // Build customFieldValues (only non-empty) from validated form data
+    const customFieldValues: Record<string, string | number> = {};
+    const customData = (data.custom || {}) as Record<string, unknown>;
+    for (const f of customFields) {
+      const v = customData[f.key];
+      if (v === undefined || v === null || v === '') continue;
+      if (typeof v === 'number') {
+        customFieldValues[f.key] = v;
+      } else if (f.type === 'number') {
+        const n = Number(v);
+        if (!Number.isNaN(n)) {
+          customFieldValues[f.key] = n;
+        }
+      } else {
+        customFieldValues[f.key] = String(v);
+      }
     }
 
     setIsSubmitting(true);
@@ -231,6 +265,7 @@ export default function JobApplyPage() {
         address: data.address,
         resume: resumeFile,
         userId: user?.id || null,
+        customFieldValues: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
       });
 
       setApplicationId(result.application.id);
@@ -321,21 +356,47 @@ export default function JobApplyPage() {
                 <p className="text-muted-foreground mb-2">
                   Your application for <span className="font-medium">{job.title}</span> has been submitted successfully.
                 </p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  We'll review your application and get back to you soon.
-                </p>
-                <div className="flex gap-3">
-                  <Button variant="outline" asChild>
-                    <Link href="/jobs">
-                      Browse More Jobs
-                    </Link>
-                  </Button>
-                  <Button asChild>
-                    <Link href={applicationId ? `/my-applications/${applicationId}` : '/my-applications'}>
-                      View Application
-                    </Link>
-                  </Button>
-                </div>
+                {user ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      We'll review your application and get back to you soon. You can track the status in your account.
+                    </p>
+                    <div className="flex gap-3">
+                      <Button variant="outline" asChild>
+                        <Link href="/jobs">
+                          Browse More Jobs
+                        </Link>
+                      </Button>
+                      <Button asChild>
+                        <Link href={applicationId ? `/my-applications/${applicationId}` : '/my-applications'}>
+                          View Application
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      We'll review your application and get back to you soon.
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                      Want to **track your application status** and easily view updates later? 
+                      Create a free account using the same email you used for this application.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+                      <Button variant="outline" asChild>
+                        <Link href="/jobs">
+                          Browse More Jobs
+                        </Link>
+                      </Button>
+                      <Button asChild>
+                        <Link href={`/signup?redirect=/my-applications`}>
+                          Create Account to Track Status
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -478,6 +539,89 @@ export default function JobApplyPage() {
                   <p className="text-sm text-destructive">{errors.address.message}</p>
                 )}
               </div>
+
+              {/* Custom application fields (e.g. Cover letter, Expected salary, Yes/No) */}
+              {customFields.length > 0 && (
+                <div className="space-y-4">
+                  {customFields.map((f) => {
+                    const customError = (errors as any)?.custom?.[f.key];
+                    return (
+                      <div key={f.key} className="space-y-2">
+                        <Label htmlFor={`custom_${f.key}`}>
+                          {f.label} {f.required ? '*' : ''}
+                        </Label>
+                        {f.type === 'text' && (
+                          <Input
+                            id={`custom_${f.key}`}
+                            disabled={isSubmitting}
+                            {...register(`custom.${f.key}`, {
+                              required: f.required ? `${f.label} is required` : false,
+                            })}
+                          />
+                        )}
+                        {f.type === 'textarea' && (
+                          <Textarea
+                            id={`custom_${f.key}`}
+                            disabled={isSubmitting}
+                            rows={4}
+                            {...register(`custom.${f.key}`, {
+                              required: f.required ? `${f.label} is required` : false,
+                            })}
+                          />
+                        )}
+                        {f.type === 'number' && (
+                          <Input
+                            id={`custom_${f.key}`}
+                            type="number"
+                            disabled={isSubmitting}
+                            {...register(`custom.${f.key}`, {
+                              setValueAs: (v) => (v === '' ? undefined : Number(v)),
+                              ...(f.required ? { required: `${f.label} is required` } : {}),
+                              validate: (v) =>
+                                v === undefined ||
+                                (typeof v === 'number' && !Number.isNaN(v)) ||
+                                `${f.label} must be a number`,
+                            })}
+                          />
+                        )}
+                        {f.type === 'select' && (
+                          <Controller
+                            control={control}
+                            name={`custom.${f.key}`}
+                            rules={f.required ? { required: `${f.label} is required` } : {}}
+                            render={({ field }) => (
+                              <Select
+                                value={(field.value as string) ?? ''}
+                                onValueChange={field.onChange}
+                                disabled={isSubmitting}
+                              >
+                                <SelectTrigger id={`custom_${f.key}`} className="w-full">
+                                  <SelectValue
+                                    placeholder={f.required ? `Select ${f.label}` : 'Select (optional)'}
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {!f.required && <SelectItem value="">—</SelectItem>}
+                                  {(f.options ?? []).map((opt) => (
+                                    <SelectItem key={opt} value={opt}>
+                                      {opt}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        )}
+                        {customError && (
+                          <p className="text-sm text-destructive">
+                            {String(customError.message ?? customError)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Resume Upload */}
               <div className="space-y-2">

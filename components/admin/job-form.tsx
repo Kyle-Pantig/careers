@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,11 +31,11 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, Briefcase, MapPin, Building2, Calendar, Check, ChevronsUpDown, Clock, Award, DollarSign } from 'lucide-react';
+import { Loader2, ArrowLeft, Briefcase, MapPin, Building2, Calendar, Check, ChevronsUpDown, Clock, Award, DollarSign, Plus, Trash2, ListFilter } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Job } from '@/lib/jobs';
 import { useIndustries, useCreateJob, useUpdateJob } from '@/hooks';
-import { jobSchema, type JobFormData, WORK_TYPE_LABELS, JOB_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS } from '@/shared/validators';
+import { jobSchema, type JobFormData, type CustomApplicationField, type CustomFieldType, WORK_TYPE_LABELS, JOB_TYPE_LABELS, SHIFT_TYPE_LABELS, CURRENCY_LABELS, CURRENCY_SYMBOLS, SALARY_PERIOD_LABELS, CUSTOM_FIELD_TYPE_LABELS } from '@/shared/validators';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -60,6 +60,7 @@ export function JobForm({ job, mode }: JobFormProps) {
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(jobSchema),
@@ -79,7 +80,13 @@ export function JobForm({ job, mode }: JobFormProps) {
       salaryPeriod: job?.salaryPeriod || 'YEARLY',
       isPublished: job?.isPublished ?? false,
       expiresAt: job?.expiresAt || '',
+      customApplicationFields: (job?.customApplicationFields as CustomApplicationField[] | null | undefined) ?? [],
     } as JobFormData,
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'customApplicationFields',
   });
 
   const watchWorkType = watch('workType');
@@ -105,6 +112,7 @@ export function JobForm({ job, mode }: JobFormProps) {
         await createMutation.mutateAsync({
           ...formData,
           expiresAt: formData.expiresAt || undefined,
+          customApplicationFields: formData.customApplicationFields ?? [],
         });
         toast.success('Job created successfully!');
       } else if (job) {
@@ -113,6 +121,7 @@ export function JobForm({ job, mode }: JobFormProps) {
           data: {
             ...formData,
             expiresAt: formData.expiresAt || undefined,
+            customApplicationFields: formData.customApplicationFields ?? [],
           },
         });
         toast.success('Job updated successfully!');
@@ -348,6 +357,128 @@ export function JobForm({ job, mode }: JobFormProps) {
                     <p className="text-destructive text-sm">{errors.experienceMax.message}</p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Custom Application Fields */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ListFilter className="h-5 w-5" />
+                  Custom Application Fields
+                </CardTitle>
+                <CardDescription>
+                  Extra questions on the apply form (e.g. Cover letter, Expected salary, Yes/No). Primary fields (name, email, contact, address, resume) are always required.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {fields.map((field, i) => (
+                  <div
+                    key={field.id}
+                    className="rounded-lg border p-4 space-y-3 bg-muted/20"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">Field {i + 1}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(i)}
+                        disabled={isLoading}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Key (e.g. cover_letter)</Label>
+                        <Input
+                          {...register(`customApplicationFields.${i}.key`)}
+                          placeholder="cover_letter"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Label (e.g. Cover Letter)</Label>
+                        <Input
+                          {...register(`customApplicationFields.${i}.label`)}
+                          placeholder="Cover Letter"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Type</Label>
+                        <Select
+                          value={watch(`customApplicationFields.${i}.type`)}
+                          onValueChange={(val: CustomFieldType) => {
+                            setValue(`customApplicationFields.${i}.type`, val);
+                            if (val === 'select') {
+                              const opts = watch(`customApplicationFields.${i}.options`) as string[] | undefined;
+                              if (!opts || opts.length === 0) {
+                                setValue(`customApplicationFields.${i}.options`, ['Yes', 'No']);
+                              }
+                            }
+                          }}
+                          disabled={isLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.entries(CUSTOM_FIELD_TYPE_LABELS) as [CustomFieldType, string][]).map(([v, l]) => (
+                              <SelectItem key={v} value={v}>
+                                {l}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!watch(`customApplicationFields.${i}.required`)}
+                            onChange={(e) => setValue(`customApplicationFields.${i}.required`, e.target.checked)}
+                            disabled={isLoading}
+                            className="rounded border-input"
+                          />
+                          <span className="text-sm">Required</span>
+                        </label>
+                      </div>
+                    </div>
+                    {watch(`customApplicationFields.${i}.type`) === 'select' && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Options (comma‑separated, e.g. Yes, No)</Label>
+                        <Input
+                          placeholder="Yes, No"
+                          value={(watch(`customApplicationFields.${i}.options`) as string[] | undefined)?.join(', ') ?? ''}
+                          onChange={(e) => {
+                            const arr = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                            setValue(`customApplicationFields.${i}.options`, arr);
+                          }}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ key: `field_${fields.length + 1}`, label: '', type: 'text', required: false })}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add custom field
+                </Button>
+                {errors.customApplicationFields && (
+                  <p className="text-destructive text-sm">{errors.customApplicationFields.message}</p>
+                )}
               </CardContent>
             </Card>
           </div>

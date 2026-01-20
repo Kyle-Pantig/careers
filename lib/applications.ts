@@ -9,7 +9,10 @@ export interface ApplicationData {
   address: string;
   resume: File;
   userId?: string | null;
+  customFieldValues?: Record<string, string | number>;
 }
+
+import type { CustomApplicationField } from '@/shared/validators';
 
 export interface Application {
   id: string;
@@ -22,6 +25,7 @@ export interface Application {
   address: string;
   resumeUrl: string;
   resumeFileName: string;
+  customFieldValues?: Record<string, string | number> | null;
   status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected' | 'hired';
   notes: string | null;
   archivedAt: string | null;
@@ -38,6 +42,7 @@ export interface Application {
     salaryMax?: number | null;
     salaryPeriod?: string | null;
     salaryCurrency?: string | null;
+    customApplicationFields?: CustomApplicationField[] | null;
     industry?: {
       id?: string;
       name: string;
@@ -69,6 +74,9 @@ export async function submitApplication(data: ApplicationData): Promise<Applicat
   formData.append('resume', data.resume);
   if (data.userId) {
     formData.append('userId', data.userId);
+  }
+  if (data.customFieldValues && Object.keys(data.customFieldValues).length > 0) {
+    formData.append('customFieldValues', JSON.stringify(data.customFieldValues));
   }
 
   const res = await fetch(`${API_URL}/applications`, {

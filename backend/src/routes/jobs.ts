@@ -430,6 +430,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
         isPublished: body.isPublished || false,
         publishedAt: body.isPublished ? new Date() : null,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+        customApplicationFields: body.customApplicationFields ?? null,
       };
 
       const job = await prisma.job.create({
@@ -490,6 +491,22 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
         ])),
         isPublished: t.Optional(t.Boolean()),
         expiresAt: t.Optional(t.String()),
+        customApplicationFields: t.Optional(
+          t.Array(
+            t.Object({
+              key: t.String(),
+              label: t.String(),
+              type: t.Union([
+                t.Literal('text'),
+                t.Literal('textarea'),
+                t.Literal('number'),
+                t.Literal('select'),
+              ]),
+              required: t.Boolean(),
+              options: t.Optional(t.Array(t.String())),
+            })
+          )
+        ),
       }),
     }
   )
@@ -542,6 +559,7 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
         isPublished: body.isPublished,
         publishedAt,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+        customApplicationFields: body.customApplicationFields ?? null,
       };
 
       const job = await prisma.job.update({
@@ -606,6 +624,22 @@ export const jobRoutes = new Elysia({ prefix: '/jobs' })
         ])),
         isPublished: t.Optional(t.Boolean()),
         expiresAt: t.Optional(t.String()),
+        customApplicationFields: t.Optional(
+          t.Array(
+            t.Object({
+              key: t.String(),
+              label: t.String(),
+              type: t.Union([
+                t.Literal('text'),
+                t.Literal('textarea'),
+                t.Literal('number'),
+                t.Literal('select'),
+              ]),
+              required: t.Boolean(),
+              options: t.Optional(t.Array(t.String())),
+            })
+          )
+        ),
       }),
     }
   )
