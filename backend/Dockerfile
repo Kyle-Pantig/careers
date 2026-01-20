@@ -5,12 +5,12 @@ WORKDIR /app
 # Install dependencies into temp directory
 # This will cache them and speed up future builds
 FROM base AS install
-mkdir -p /temp/dev
+RUN mkdir -p /temp/dev
 COPY package.json bun.lock /temp/dev/
 RUN cd /temp/dev && bun install --frozen-lockfile
 
 # Install with --production (exclude devDependencies)
-mkdir -p /temp/prod
+RUN mkdir -p /temp/prod
 COPY package.json bun.lock /temp/prod/
 RUN cd /temp/prod && bun install --frozen-lockfile --production
 
