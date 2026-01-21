@@ -151,11 +151,13 @@ function IndustryBarChart({
   label = 'count',
   colorVar = '--chart-1',
   alternateColors = false,
+  isLoading = false,
 }: {
   data: { name: string; count: number }[];
   label?: string;
   colorVar?: string;
   alternateColors?: boolean;
+  isLoading?: boolean;
 }) {
   const chartConfig: ChartConfig = {
     count: { label: label, color: `var(${colorVar})` },
@@ -163,6 +165,22 @@ function IndustryBarChart({
 
   const barColors = ['var(--primary)', 'var(--muted-foreground)'];
   const textColors = ['var(--primary-foreground)', 'white'];
+
+  if (isLoading) {
+    return (
+      <div className="h-[250px] w-full space-y-3 py-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton
+              className="h-8 rounded"
+              style={{ width: `${85 - (i * 12)}%` }}
+            />
+            <Skeleton className="h-4 w-8" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (data.length === 0) {
     return (
@@ -267,9 +285,11 @@ function IndustryBarChart({
 
 // Interactive Area Chart for daily views and applications
 function DailyActivityChart({
-  data
+  data,
+  isLoading = false,
 }: {
   data: { date: string; views: number; applications: number }[];
+  isLoading?: boolean;
 }) {
   const [timeRange, setTimeRange] = useState('90d');
 
@@ -303,6 +323,35 @@ function DailyActivityChart({
       return date >= startDate;
     });
   }, [data, timeRange]);
+
+  if (isLoading) {
+    return (
+      <Card className="pt-0">
+        <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+          <div className="grid flex-1 gap-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48 mt-1" />
+          </div>
+          <Skeleton className="h-9 w-[160px] rounded-lg" />
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <div className="h-[250px] w-full flex items-end justify-between gap-2 px-4">
+            {[40, 65, 45, 80, 55, 70, 50, 85, 60, 75, 48, 68].map((height, i) => (
+              <Skeleton
+                key={i}
+                className="flex-1 rounded-t-sm"
+                style={{ height: `${height}%` }}
+              />
+            ))}
+          </div>
+          <div className="flex justify-center gap-4 mt-4">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!data || data.length === 0) {
     return (
@@ -422,15 +471,16 @@ function DailyActivityChart({
 }
 
 // Interactive Bar Chart for page views (Home vs Jobs)
-// Interactive Bar Chart for page views (Home vs Jobs)
 function PageViewsChart({
   data,
   timeRange,
   onTimeRangeChange,
+  isLoading = false,
 }: {
   data: { date: string; home: number; jobs: number }[];
   timeRange: string;
   onTimeRangeChange: (value: string) => void;
+  isLoading?: boolean;
 }) {
   const [activeChart, setActiveChart] = useState<'home' | 'jobs'>('home');
 
@@ -468,6 +518,43 @@ function PageViewsChart({
       jobs: filteredData.reduce((acc, curr) => acc + curr.jobs, 0),
     };
   }, [filteredData]);
+
+  if (isLoading) {
+    return (
+      <Card className="py-0">
+        <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
+          <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-4 sm:py-5">
+            <div className="flex items-center justify-between gap-3 sm:justify-start">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-8 w-[130px]" />
+            </div>
+            <Skeleton className="h-4 w-40 mt-1" />
+          </div>
+          <div className="flex">
+            <div className="flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-8 w-20 mt-1" />
+            </div>
+            <div className="flex flex-1 flex-col justify-center gap-1 border-t border-l px-6 py-4 sm:border-t-0 sm:px-8 sm:py-6">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-8 w-20 mt-1" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-2 sm:p-6">
+          <div className="h-[250px] w-full flex items-end justify-between gap-1 px-4">
+            {[35, 55, 42, 78, 48, 65, 38, 82, 52, 70, 45, 75, 40, 60, 50, 85, 58, 72, 44, 68].map((height, i) => (
+              <Skeleton
+                key={i}
+                className="flex-1 rounded-t-sm"
+                style={{ height: `${height}%` }}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!data || data.length === 0) {
     return (
@@ -784,7 +871,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Daily Activity Chart */}
-      <DailyActivityChart data={stats.charts.dailyActivity || []} />
+      <DailyActivityChart data={stats.charts.dailyActivity || []} isLoading={statsLoading} />
 
       {/* Page Views & Insight */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -793,6 +880,7 @@ export default function DashboardPage() {
             data={pageViewStats?.dailyPageViews || []}
             timeRange={pageViewTimeRange}
             onTimeRangeChange={setPageViewTimeRange}
+            isLoading={pageViewsLoading}
           />
         </div>
         <div className="md:col-span-1">
@@ -895,6 +983,7 @@ export default function DashboardPage() {
                 data={jobsByIndustryData}
                 label="Jobs"
                 alternateColors
+                isLoading={statsLoading}
               />
             </div>
           </CardContent>
@@ -915,6 +1004,7 @@ export default function DashboardPage() {
                 data={applicationsByIndustryData}
                 label="Applications"
                 alternateColors
+                isLoading={statsLoading}
               />
             </div>
           </CardContent>
