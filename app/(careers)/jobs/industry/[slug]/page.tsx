@@ -530,7 +530,7 @@ export default function IndustryJobsPage() {
                   {/* Posted Date */}
                   {job.publishedAt && (
                     <p className="text-xs text-muted-foreground">
-                      Posted {formatTimeAgo(job.publishedAt)}
+                      {formatTimeAgo(job.publishedAt)}
                     </p>
                   )}
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useJobByNumber, useCheckJobSaved, useSaveJob, useUnsaveJob } from '@/hooks';
 import { useAuth } from '@/context';
-import { MaxWidthLayout } from '@/components/careers';
+import { MaxWidthLayout, RelatedJobs } from '@/components/careers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -160,6 +160,26 @@ export default function JobDetailPage() {
     });
   };
 
+  const formatTimeAgo = (date: string | Date | null) => {
+    if (!date) return '';
+    const now = new Date();
+    const past = new Date(date);
+    const diffMs = now.getTime() - past.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+
+    if (diffSecs < 60) return 'just now';
+    if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    if (diffWeeks < 4) return `${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago`;
+    return `${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago`;
+  };
+
   const formatExperience = (min: number, max: number | null) => {
     if (max) return `${min}-${max} years`;
     if (min > 0) return `${min}+ years`;
@@ -272,13 +292,12 @@ export default function JobDetailPage() {
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <motion.div variants={fadeInUp} transition={{ duration: 0.5 }}>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="gap-1">
-                <Building2 className="h-3 w-3" />
-                {job.industry?.name}
-              </Badge>
-            </div>
             <h1 className="text-3xl font-bold tracking-tight mb-2">{job.title}</h1>
+            {job.publishedAt && (
+              <p className="text-sm text-muted-foreground">
+                {formatTimeAgo(job.publishedAt)}
+              </p>
+            )}
           </motion.div>
           <motion.div
             className="flex gap-2 justify-end"
@@ -551,6 +570,9 @@ export default function JobDetailPage() {
           )}
         </motion.div>
       )}
+
+      {/* Related Jobs */}
+      <RelatedJobs currentJobId={job.id} industryId={job.industryId} />
     </MaxWidthLayout>
   );
 }
