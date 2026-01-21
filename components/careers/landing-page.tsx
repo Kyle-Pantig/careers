@@ -564,7 +564,7 @@ export function PopularIndustries() {
                 variants={scaleIn}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Link href={`/jobs?industryId=${industry.id}`}>
+                <Link href={`/jobs/industry/${encodeURIComponent(industry.name.toLowerCase().replace(/\s+/g, '-'))}`}>
                   <Card className="group h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-primary/50 rounded-bl-none rounded-tr-none">
                     <CardContent className="flex flex-col items-center justify-center p-8 text-center">
                       <div className="mb-6 rounded-2xl bg-zinc-50 p-4 transition-colors group-hover:bg-primary/5">

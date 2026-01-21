@@ -116,7 +116,7 @@ const PERMISSION_LEVEL_BADGES: Record<string, { label: string; color: string; ic
 
 export default function UsersPage() {
   const { user: currentUser, hasPermission, isLoading: authLoading, isAdmin, isSuperAdmin } = useAuth();
-  
+
   // Filter states
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -185,6 +185,13 @@ export default function UsersPage() {
   const canChangeRole = (targetUser: User): boolean => {
     if (!isAdmin) return false;
     if (isSelf(targetUser)) return false;
+
+    // Check if target user is an admin
+    const isTargetAdmin = targetUser.roles.some((r) => r.role.name === 'admin');
+
+    // Only super admin can change role of other admins
+    if (isTargetAdmin && !isSuperAdmin) return false;
+
     return true;
   };
 
@@ -199,6 +206,13 @@ export default function UsersPage() {
   const canToggleActive = (targetUser: User): boolean => {
     if (!isAdmin) return false;
     if (isSelf(targetUser)) return false;
+
+    // Check if target user is an admin
+    const isTargetAdmin = targetUser.roles.some((r) => r.role.name === 'admin');
+
+    // Only super admin can toggle active status of other admins
+    if (isTargetAdmin && !isSuperAdmin) return false;
+
     return true;
   };
 
@@ -206,13 +220,13 @@ export default function UsersPage() {
   const canDelete = (targetUser: User): boolean => {
     if (!isAdmin) return false;
     if (isSelf(targetUser)) return false;
-    
+
     // Check if target user is an admin
     const isTargetAdmin = targetUser.roles.some((r) => r.role.name === 'admin');
-    
+
     // Only super admin can delete other admins
     if (isTargetAdmin && !isSuperAdmin) return false;
-    
+
     return true;
   };
 
@@ -703,11 +717,10 @@ export default function UsersPage() {
                 >
                   {/* Full Access Option */}
                   <div
-                    className={`relative flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                      selectedRolePermission === STAFF_PERMISSION_LEVELS.CAN_EDIT
+                    className={`relative flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${selectedRolePermission === STAFF_PERMISSION_LEVELS.CAN_EDIT
                         ? 'border-primary bg-primary/5'
                         : 'hover:bg-muted/50'
-                    }`}
+                      }`}
                     onClick={() => setSelectedRolePermission(STAFF_PERMISSION_LEVELS.CAN_EDIT)}
                   >
                     <RadioGroupItem
@@ -729,11 +742,10 @@ export default function UsersPage() {
 
                   {/* View Only Option */}
                   <div
-                    className={`relative flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                      selectedRolePermission === STAFF_PERMISSION_LEVELS.CAN_READ
+                    className={`relative flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${selectedRolePermission === STAFF_PERMISSION_LEVELS.CAN_READ
                         ? 'border-primary bg-primary/5'
                         : 'hover:bg-muted/50'
-                    }`}
+                      }`}
                     onClick={() => setSelectedRolePermission(STAFF_PERMISSION_LEVELS.CAN_READ)}
                   >
                     <RadioGroupItem
@@ -791,11 +803,10 @@ export default function UsersPage() {
             >
               {/* Full Access Option */}
               <div
-                className={`relative flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                  selectedPermissionLevel === STAFF_PERMISSION_LEVELS.CAN_EDIT
+                className={`relative flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${selectedPermissionLevel === STAFF_PERMISSION_LEVELS.CAN_EDIT
                     ? 'border-primary bg-primary/5'
                     : 'hover:bg-muted/50'
-                }`}
+                  }`}
                 onClick={() => setSelectedPermissionLevel(STAFF_PERMISSION_LEVELS.CAN_EDIT)}
               >
                 <RadioGroupItem
@@ -826,11 +837,10 @@ export default function UsersPage() {
 
               {/* View Only Option */}
               <div
-                className={`relative flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                  selectedPermissionLevel === STAFF_PERMISSION_LEVELS.CAN_READ
+                className={`relative flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${selectedPermissionLevel === STAFF_PERMISSION_LEVELS.CAN_READ
                     ? 'border-primary bg-primary/5'
                     : 'hover:bg-muted/50'
-                }`}
+                  }`}
                 onClick={() => setSelectedPermissionLevel(STAFF_PERMISSION_LEVELS.CAN_READ)}
               >
                 <RadioGroupItem
