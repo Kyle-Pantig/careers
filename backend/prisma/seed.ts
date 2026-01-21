@@ -1169,11 +1169,8 @@ async function main() {
       name: 'Application Confirmation',
       subject: 'Application Received - {{jobTitle}}',
       body: `<div style="text-align: center; margin-bottom: 32px;">
-  <div style="display: inline-block; background-color: #dcfce7; border-radius: 50%; padding: 16px; margin-bottom: 16px;">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-      <polyline points="22 4 12 14.01 9 11.01"/>
-    </svg>
+  <div style="display: inline-block; background-color: #dcfce7; border-radius: 50%; width: 64px; height: 64px; line-height: 64px; text-align: center; margin-bottom: 16px;">
+    <span style="font-size: 32px; color: #16a34a; font-family: sans-serif; font-weight: bold;">✓</span>
   </div>
   <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
     Application Received!

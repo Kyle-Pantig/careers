@@ -553,37 +553,61 @@ export default function ApplicationsPage() {
             {/* Total Applications */}
             <div className="p-4 sm:p-6 border-r border-b md:border-b-0 border-border">
               <p className="text-sm text-muted-foreground mb-1">Total Applications</p>
-              <p className="text-xl sm:text-2xl font-bold">{stats.total.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                Across {applicationsByIndustry.length} industries
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.total.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                    Across {applicationsByIndustry.length} industries
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Pending Review */}
             <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border">
               <p className="text-sm text-muted-foreground mb-1">Pending Review</p>
-              <p className="text-xl sm:text-2xl font-bold">{stats.pending.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                Awaiting initial review
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.pending.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                    Awaiting initial review
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Shortlisted */}
             <div className="p-4 sm:p-6 border-r md:border-r border-border">
               <p className="text-sm text-muted-foreground mb-1">Shortlisted</p>
-              <p className="text-xl sm:text-2xl font-bold">{stats.shortlisted.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                Ready for interview
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.shortlisted.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                    Ready for interview
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Hired */}
             <div className="p-4 sm:p-6">
               <p className="text-sm text-muted-foreground mb-1">Hired</p>
-              <p className="text-xl sm:text-2xl font-bold">{stats.hired.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                Successfully placed
-              </p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.hired.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                    Successfully placed
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -616,24 +640,92 @@ export default function ApplicationsPage() {
         </Select>
       </div>
 
-      {/* Applications by Industry */}
+      {/* Applications Content */}
       {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-48" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, j) => (
-                    <Skeleton key={j} className="h-20 w-full" />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        viewMode === 'table' ? (
+          <Card className="py-0">
+            <CardContent className="p-0">
+              <ScrollArea className="w-full">
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[180px]">Applicant</TableHead>
+                      <TableHead className="hidden sm:table-cell">Job</TableHead>
+                      <TableHead className="hidden lg:table-cell">Industry</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Applied</TableHead>
+                      <TableHead className="w-[50px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...Array(5)].map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-3 w-32" />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-20 rounded-full" />
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-8 w-8 rounded" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center gap-4 py-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="space-y-px border-t">
+                    {[...Array(2)].map((_, j) => (
+                      <div key={j} className="flex items-center justify-between p-4 border-b last:border-b-0">
+                        <div className="flex items-center gap-4 flex-1">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-48" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-8 w-16 rounded ml-4" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
       ) : applicationsByIndustry.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">

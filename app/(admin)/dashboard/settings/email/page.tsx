@@ -61,6 +61,7 @@ import {
 } from '@/hooks/use-email-templates';
 import type { EmailTemplate, EmailTemplatePlaceholder } from '@/lib/email-templates';
 import { AccessDenied } from '@/components/admin/access-denied';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Template type display names and descriptions
 const TEMPLATE_INFO: Record<
@@ -270,8 +271,31 @@ export default function EmailTemplatesPage() {
 
       {/* Templates List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="grid gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-72" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-10 rounded-full" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <Skeleton className="h-14 w-full rounded-lg" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : templates.length === 0 ? (
         <Card>

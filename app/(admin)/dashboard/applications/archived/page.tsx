@@ -88,7 +88,7 @@ export default function ArchivedApplicationsPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { hasPermission, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -240,8 +240,8 @@ export default function ArchivedApplicationsPage() {
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge 
-          variant={STATUS_CONFIG[row.original.status]?.variant || 'secondary'} 
+        <Badge
+          variant={STATUS_CONFIG[row.original.status]?.variant || 'secondary'}
           className={`gap-1 ${row.original.status === 'hired' ? 'bg-green-600 hover:bg-green-600/80' : ''}`}
         >
           {STATUS_CONFIG[row.original.status]?.icon}
@@ -301,14 +301,14 @@ export default function ArchivedApplicationsPage() {
               {hasPermission(PERMISSIONS.APPLICATIONS_EDIT) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => restoreMutation.mutate(application.id)}
                     disabled={restoreMutation.isPending}
                   >
                     <ArchiveRestore className="mr-2 h-4 w-4" />
                     Restore
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => handleDeleteClick(application)}
                     className="text-destructive"
                   >
@@ -354,8 +354,8 @@ export default function ArchivedApplicationsPage() {
             <p className="text-muted-foreground">View and manage archived job applications</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
@@ -396,11 +396,50 @@ export default function ArchivedApplicationsPage() {
       <Card className='py-0'>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-4 p-6">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
+            <ScrollArea className="w-full">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Applicant</TableHead>
+                    <TableHead className="hidden sm:table-cell">Job</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden md:table-cell">Archived</TableHead>
+                    <TableHead className="w-[50px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-8 rounded" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           ) : applications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Archive className="h-12 w-12 text-muted-foreground mb-4" />
@@ -418,13 +457,13 @@ export default function ArchivedApplicationsPage() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead 
+                        <TableHead
                           key={header.id}
                           className={
                             header.id === 'applicant' ? 'min-w-[180px]' :
-                            header.id === 'job' ? 'hidden sm:table-cell' :
-                            header.id === 'archivedAt' ? 'hidden md:table-cell' :
-                            header.id === 'actions' ? 'w-[50px]' : ''
+                              header.id === 'job' ? 'hidden sm:table-cell' :
+                                header.id === 'archivedAt' ? 'hidden md:table-cell' :
+                                  header.id === 'actions' ? 'w-[50px]' : ''
                           }
                         >
                           {header.isPlaceholder
@@ -439,11 +478,11 @@ export default function ArchivedApplicationsPage() {
                   {table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell 
+                        <TableCell
                           key={cell.id}
                           className={
                             cell.column.id === 'job' ? 'hidden sm:table-cell' :
-                            cell.column.id === 'archivedAt' ? 'hidden md:table-cell' : ''
+                              cell.column.id === 'archivedAt' ? 'hidden md:table-cell' : ''
                           }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

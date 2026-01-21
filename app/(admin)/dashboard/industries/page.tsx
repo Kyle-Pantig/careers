@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -37,10 +38,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
+import {
+  Plus,
+  Pencil,
+  Trash2,
   Loader2,
   Building2,
   ArrowUpDown,
@@ -280,7 +281,7 @@ export default function IndustriesPage() {
 
   const handleDelete = async () => {
     if (!editingIndustry) return;
-    
+
     try {
       await deleteMutation.mutateAsync(editingIndustry.id);
       toast.success('Industry deleted successfully');
@@ -368,9 +369,9 @@ export default function IndustriesPage() {
                   <>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button 
-                          type="button" 
-                          variant="destructive" 
+                        <Button
+                          type="button"
+                          variant="destructive"
                           className="w-full sm:w-auto sm:mr-auto"
                           disabled={isSaving || isDeleting}
                         >
@@ -386,7 +387,7 @@ export default function IndustriesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Industry</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete &quot;{editingIndustry.name}&quot;? 
+                            Are you sure you want to delete &quot;{editingIndustry.name}&quot;?
                             This action cannot be undone.
                             {editingIndustry._count?.jobs && editingIndustry._count.jobs > 0 && (
                               <span className="block mt-2 text-destructive font-medium">
@@ -410,10 +411,10 @@ export default function IndustriesPage() {
                   </>
                 )}
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setDialogOpen(false)} 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
                     disabled={isSaving || isDeleting}
                     className="flex-1 sm:flex-none"
                   >
@@ -434,9 +435,40 @@ export default function IndustriesPage() {
       <Card className='py-0'>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Jobs</TableHead>
+                  <TableHead>Status</TableHead>
+                  {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && <TableHead className="w-[70px]" />}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-8" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </TableCell>
+                    {hasPermission(PERMISSIONS.INDUSTRIES_MANAGE) && (
+                      <TableCell>
+                        <Skeleton className="h-8 w-8 rounded" />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : industries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
@@ -457,7 +489,7 @@ export default function IndustriesPage() {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <TableHead 
+                      <TableHead
                         key={header.id}
                         className={header.id === 'actions' ? 'w-[70px]' : ''}
                       >
