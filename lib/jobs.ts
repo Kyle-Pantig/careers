@@ -1,6 +1,11 @@
 import type { Industry } from './industries';
 
-const API_URL = '/api/proxy';
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') return '';
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+};
+
+const API_URL = `${getBaseUrl()}/api/proxy`;
 const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET_TOKEN || '';
 
 /* ... imports and types ... */

@@ -21,8 +21,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Careers Platform",
-  description: "Find your next career opportunity",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  title: {
+    default: "Careers Platform | Find Your Next Opportunity",
+    template: "%s | Careers Platform"
+  },
+  description: "Discover exciting career opportunities and join our growing team. Browse available jobs, apply online, and track your applications.",
+  keywords: ["jobs", "careers", "employment", "hiring", "recruitment", "job search"],
+  authors: [{ name: "Careers Team" }],
+  creator: "Careers Platform",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "Careers Platform",
+    title: "Careers Platform | Find Your Next Opportunity",
+    description: "Discover exciting career opportunities and join our growing team. Browse available jobs, apply online, and track your applications.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Careers Platform | Find Your Next Opportunity",
+    description: "Discover exciting career opportunities and join our growing team.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

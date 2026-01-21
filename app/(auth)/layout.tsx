@@ -1,7 +1,15 @@
-'use client';
-
 import { Suspense } from 'react';
 import { GuestGuard } from '@/components/auth';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Authentication",
+  description: "Sign in or create an account to manage your job applications.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 function AuthLayoutFallback() {
   return (
