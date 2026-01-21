@@ -46,7 +46,17 @@ import {
   CheckCircle2,
   Hash,
   Loader2,
+  Facebook,
+  Linkedin,
+  Mail,
+  Link as LinkIcon,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   WORK_TYPE_LABELS,
@@ -65,6 +75,7 @@ export default function JobDetailPage() {
   const viewTracked = useRef(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Admin/staff cannot save or apply for jobs
   const isAdminOrStaff = user?.roles.includes('admin') || user?.roles.includes('staff');
@@ -174,21 +185,38 @@ export default function JobDetailPage() {
 
   const isJobExpired = job?.expiresAt ? new Date(job.expiresAt) < new Date() : false;
 
-  const handleShare = async () => {
+  const handleShare = (platform: 'facebook' | 'linkedin' | 'email' | 'copy') => {
     const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: job?.title,
-          text: `Check out this job: ${job?.title}`,
-          url,
-        });
-      } catch {
-        // User cancelled or error
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied to clipboard!');
+    const title = job?.title || 'Job Opportunity';
+    const text = `Check out this job: ${title}`;
+
+    const openPopup = (shareUrl: string) => {
+      const width = 600;
+      const height = 400;
+      const left = (window.innerWidth - width) / 2 + window.screenX;
+      const top = (window.innerHeight - height) / 2 + window.screenY;
+      window.open(
+        shareUrl,
+        'share-window',
+        `width=${width},height=${height},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+    };
+
+    switch (platform) {
+      case 'facebook':
+        openPopup(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+        break;
+      case 'linkedin':
+        openPopup(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
+        break;
+      case 'email':
+        window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${text}\n\n${url}`)}`;
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        break;
     }
   };
 
@@ -257,9 +285,64 @@ export default function JobDetailPage() {
             variants={fadeIn}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <Button variant="outline" size="icon" className="rounded-full" onClick={handleShare}>
-              <Share2 className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleShare('facebook');
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Facebook className="h-4 w-4 text-[#1877F2]" />
+                  <span>Facebook</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleShare('linkedin');
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Linkedin className="h-4 w-4 text-[#0A66C2]" />
+                  <span>LinkedIn</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleShare('email');
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Mail className="h-4 w-4 text-zinc-500" />
+                  <span>Email</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleShare('copy');
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span className="text-green-500">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="h-4 w-4 text-zinc-500" />
+                      <span>Copy Link</span>
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Save button - hidden for admin/staff */}
             {!isAdminOrStaff && (
               <Button

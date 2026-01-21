@@ -1,5 +1,4 @@
 import { CareersHeader, CareersFooter } from "@/components/careers";
-import { CookieConsent } from "@/components/shared/cookie-consent";
 
 export default function CareersLayout({
   children,
@@ -11,7 +10,6 @@ export default function CareersLayout({
       <CareersHeader />
       <main className="flex-1">{children}</main>
       <CareersFooter />
-      <CookieConsent />
     </div>
   );
 }

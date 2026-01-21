@@ -158,7 +158,7 @@ export function JobForm({ job, mode }: JobFormProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 pb-2">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard/jobs">
             <ArrowLeft className="h-4 w-4" />
@@ -168,11 +168,6 @@ export function JobForm({ job, mode }: JobFormProps) {
           <h1 className="text-2xl font-bold tracking-tight">
             {mode === 'create' ? 'Create New Job' : 'Edit Job'}
           </h1>
-          <p className="text-muted-foreground">
-            {mode === 'create'
-              ? 'Fill in the details below to create a new job posting.'
-              : 'Update the job posting details below.'}
-          </p>
         </div>
       </div>
 
@@ -344,8 +339,11 @@ export function JobForm({ job, mode }: JobFormProps) {
                         min={0}
                         max={50}
                         placeholder="0"
-                        value={watchExperienceMin ?? 0}
-                        onChange={(e) => setValue('experienceMin', parseInt(e.target.value) || 0)}
+                        value={watchExperienceMin ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setValue('experienceMin', val === '' ? '' : parseInt(val) || 0);
+                        }}
                         disabled={isLoading}
                       />
                     </div>
@@ -447,7 +445,7 @@ export function JobForm({ job, mode }: JobFormProps) {
                           }}
                           disabled={isLoading}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -488,11 +486,11 @@ export function JobForm({ job, mode }: JobFormProps) {
                     )}
                   </div>
                 ))}
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 w-full"
                     onClick={() => append({ key: `field_${fields.length + 1}`, label: '', type: 'text', required: false })}
                     disabled={isLoading}
                   >
@@ -501,7 +499,7 @@ export function JobForm({ job, mode }: JobFormProps) {
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" disabled={isLoading}>
+                      <Button variant="outline" className="w-full sm:w-auto" disabled={isLoading}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add from template
                       </Button>

@@ -10,19 +10,41 @@ import Link from 'next/link';
 export function CookieConsent() {
     const [isVisible, setIsVisible] = useState(false);
     const [isHandled, setIsHandled] = useState(false);
-    const hasChecked = useRef(false);
 
     useEffect(() => {
-        // Prevent double execution in StrictMode
-        if (hasChecked.current) return;
-        hasChecked.current = true;
-
         // Check if user has already made a choice
+        const checkConsent = () => {
+            const consent = localStorage.getItem('cookie-consent');
+            if (consent) {
+                setIsVisible(false);
+                setIsHandled(true);
+            } else {
+                // Show if no consent yet
+                setIsVisible(true);
+            }
+        };
+
         const consent = localStorage.getItem('cookie-consent');
         if (!consent) {
             // Small delay for better UX (don't show immediately on load)
-            const timer = setTimeout(() => setIsVisible(true), 1000);
-            return () => clearTimeout(timer);
+            const timer = setTimeout(() => {
+                // Final check before showing to avoid race conditions
+                if (!localStorage.getItem('cookie-consent')) {
+                    setIsVisible(true);
+                }
+            }, 1000);
+
+            // Sync choice across tabs/windows
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'cookie-consent') {
+                    checkConsent();
+                }
+            });
+
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('storage', checkConsent);
+            };
         }
     }, []);
 

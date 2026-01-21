@@ -18,9 +18,9 @@ export function CareersFooter() {
   return (
     <footer className="border-t bg-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4 text-center md:text-left">
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex flex-col items-center md:items-start">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900">
                 <Briefcase className="h-4 w-4 text-white" />
@@ -35,7 +35,7 @@ export function CareersFooter() {
           </div>
 
           {/* Careers Links */}
-          <div>
+          <div className="flex flex-col items-center md:items-start">
             <h3 className="text-sm font-semibold text-zinc-900">Careers</h3>
             <ul className="mt-4 space-y-3">
               {footerLinks.careers.map((link) => (
@@ -52,7 +52,7 @@ export function CareersFooter() {
           </div>
 
           {/* Legal Links */}
-          <div>
+          <div className="flex flex-col items-center md:items-start">
             <h3 className="text-sm font-semibold text-zinc-900">Legal</h3>
             <ul className="mt-4 space-y-3">
               {footerLinks.legal.map((link) => (

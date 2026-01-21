@@ -95,6 +95,7 @@ export default function JobsPage() {
 
   // Local state for industry filter (not persisted) and popover
   const [selectedIndustry, setSelectedIndustry] = useState<string>('all');
+  const [industryOpen, setIndustryOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
 
@@ -333,21 +334,72 @@ export default function JobsPage() {
 
           {/* Filters Row */}
           <div className="flex flex-wrap gap-3">
-            {/* Industry Filter */}
-            <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="All Industries" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Industries</SelectItem>
-                {industries.map((industry) => (
-                  <SelectItem key={industry.id} value={industry.id}>
-                    {industry.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Industry Filter - Combobox */}
+            <Popover open={industryOpen} onOpenChange={setIndustryOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={industryOpen}
+                  className="w-full sm:w-[200px] justify-between font-normal bg-transparent"
+                >
+                  <div className="flex items-center">
+                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {selectedIndustry === 'all' ? (
+                      <span>All Industries</span>
+                    ) : (
+                      <span className="truncate">
+                        {industries.find((i) => i.id === selectedIndustry)?.name || 'All Industries'}
+                      </span>
+                    )}
+                  </div>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search industry..." />
+                  <CommandList>
+                    <CommandEmpty>No industry found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="all-industries"
+                        onSelect={() => {
+                          setSelectedIndustry('all');
+                          setIndustryOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedIndustry === 'all' ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        All Industries
+                      </CommandItem>
+                      {industries.map((industry) => (
+                        <CommandItem
+                          key={industry.id}
+                          value={industry.name}
+                          onSelect={() => {
+                            setSelectedIndustry(industry.id);
+                            setIndustryOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedIndustry === industry.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          {industry.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             {/* Work Type Filter */}
             <Select value={selectedWorkType} onValueChange={setSelectedWorkType}>

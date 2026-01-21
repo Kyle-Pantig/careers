@@ -47,6 +47,28 @@ const scaleIn = {
   visible: { opacity: 1, scale: 1 },
 };
 
+
+function LandingParallax({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <section
+      className={`relative overflow-hidden ${className}`}
+      style={{ clipPath: "inset(0)" }}
+    >
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-zinc-900" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(63,63,70,0.5)_0%,rgba(24,24,27,1)_100%)]" />
+        <div className="absolute inset-0 bg-grid-white/[0.1] bg-[length:60px_60px]" />
+        {/* Abstract shapes */}
+        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/20 blur-3xl filter animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl filter animate-pulse" />
+      </div>
+      <div className="relative z-10">
+        {children}
+      </div>
+    </section>
+  );
+}
+
 function Counter({ value }: { value: number }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
@@ -65,21 +87,8 @@ function Counter({ value }: { value: number }) {
 
 export function ParallaxQuote() {
   return (
-    <section
-      className="relative flex h-[60vh] items-center justify-center py-24 text-white"
-      style={{ clipPath: "inset(0)" }}
-    >
-      {/* Parallax Background - Fixed position with clip-path creates the window effect */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-zinc-900" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_diffuse_at_center,rgba(63,63,70,0.5)_0%,rgba(24,24,27,1)_100%)]" />
-        <div className="absolute inset-0 bg-grid-white/[0.1] bg-[length:60px_60px]" />
-        {/* Abstract shapes */}
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/20 blur-3xl filter animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl filter animate-pulse" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-4xl px-6 text-center lg:px-8">
+    <LandingParallax className="flex h-[60vh] items-center justify-center py-24 text-white">
+      <div className="mx-auto max-w-4xl px-6 text-center lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -95,7 +104,7 @@ export function ParallaxQuote() {
           </p>
         </motion.div>
       </div>
-    </section>
+    </LandingParallax>
   );
 }
 
@@ -111,32 +120,33 @@ export function LandingHero() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(24,24,27,0.8)_70%,rgba(24,24,27,1)_100%)]" />
       <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
         <motion.div
-          className="mx-auto max-w-2xl text-center"
+          className="mx-auto max-w-2xl lg:max-w-6xl text-center"
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
         >
           <motion.h1
-            className="text-4xl font-bold tracking-tight sm:text-6xl"
+            className="text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl"
             variants={fadeInUp}
             transition={{ duration: 0.6 }}
           >
             Find Your Next
             <motion.span
-              className="block mt-2 text-primary [text-shadow:0_0_40px_hsl(var(--primary)/0.6),0_0_80px_hsl(var(--primary)/0.4),0_0_120px_hsl(var(--primary)/0.2)]"
+              className="block lg:inline-block mt-4 lg:mt-0 lg:ml-4 bg-gradient-to-r from-blue-700 via-blue-400 to-blue-700 bg-clip-text text-transparent filter drop-shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)] animate-gradient-x"
               variants={fadeInUp}
               transition={{ duration: 0.6, delay: 0.1 }}
+              style={{ paddingBottom: '0.1em' }}
             >
               Career Opportunity
             </motion.span>
           </motion.h1>
           <motion.p
-            className="mt-6 text-lg leading-8 text-zinc-300"
+            className="mt-8 text-xl leading-relaxed text-zinc-300 max-w-xl mx-auto"
             variants={fadeInUp}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            Join our team and be part of something great.
-            Explore open positions and take the next step in your career.
+            Join a forward-thinking team where your talents are valued.
+            Discover roles that challenge you and fuel your professional growth.
           </motion.p>
           <motion.div
             className="mt-10 flex items-center justify-center"
@@ -298,16 +308,19 @@ export function FeaturedJobs() {
           variants={staggerContainer}
         >
           <motion.div
-            className="text-center mb-12"
+            className="text-center mb-16 relative"
             variants={fadeInUp}
             transition={{ duration: 0.6 }}
           >
-            <Badge variant="secondary" className="mb-4">Latest Openings</Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
-              Featured Positions
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/5 blur-3xl rounded-full -z-10" />
+            <Badge variant="outline" className="mb-4 px-4 py-1 border-primary/20 text-primary bg-primary/5 uppercase tracking-widest text-[10px] font-bold">
+              Available Roles
+            </Badge>
+            <h2 className="text-4xl font-black tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl mb-6">
+              Career Opportunities
             </h2>
-            <p className="mt-4 text-lg text-zinc-600 max-w-2xl mx-auto">
-              Discover our most exciting opportunities and find the perfect role for you.
+            <p className="mt-4 text-xl text-zinc-600 max-w-2xl mx-auto leading-relaxed">
+              Find the perfect match for your expertise in our high-growth environment.
             </p>
           </motion.div>
 
@@ -429,7 +442,7 @@ const benefits = [
 
 export function WhyJoinUs() {
   return (
-    <section className="bg-zinc-50 py-16">
+    <LandingParallax className="py-24 text-white">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <motion.div
           initial="hidden"
@@ -438,15 +451,15 @@ export function WhyJoinUs() {
           variants={staggerContainer}
         >
           <motion.div
-            className="text-center mb-12"
+            className="text-center mb-16"
             variants={fadeInUp}
             transition={{ duration: 0.6 }}
           >
-            <Badge variant="secondary" className="mb-4">Benefits</Badge>
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
+            <Badge variant="outline" className="mb-4 border-white/20 text-white bg-white/5 backdrop-blur-sm px-4 py-1">Benefits</Badge>
+            <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
               Why Join Our Team?
             </h2>
-            <p className="mt-4 text-lg text-zinc-600 max-w-2xl mx-auto">
+            <p className="mt-4 text-xl text-zinc-300 max-w-2xl mx-auto leading-relaxed">
               We believe in taking care of our people. Here&apos;s what you can expect when you join us.
             </p>
           </motion.div>
@@ -461,17 +474,17 @@ export function WhyJoinUs() {
                 variants={scaleIn}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Card className="h-full text-center hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
+                <Card className="h-full text-center hover:shadow-xl transition-all duration-300 bg-zinc-900/40 backdrop-blur-md border-white/10 group hover:border-primary/50">
+                  <CardContent className="p-8">
                     <motion.div
-                      className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4"
+                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 mb-6 group-hover:bg-primary transition-colors duration-300"
                       whileHover={{ scale: 1.1, rotate: 5 }}
                       transition={{ type: "spring", stiffness: 400, damping: 10 }}
                     >
-                      <benefit.icon className="h-6 w-6 text-primary" />
+                      <benefit.icon className="h-7 w-7 text-blue-300 group-hover:text-white transition-colors duration-300" />
                     </motion.div>
-                    <h3 className="font-semibold text-zinc-900 mb-2">{benefit.title}</h3>
-                    <p className="text-sm text-zinc-600">{benefit.description}</p>
+                    <h3 className="text-xl font-bold text-white mb-3">{benefit.title}</h3>
+                    <p className="text-zinc-400 leading-relaxed group-hover:text-zinc-300 transition-colors">{benefit.description}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -479,7 +492,7 @@ export function WhyJoinUs() {
           </motion.div>
         </motion.div>
       </div>
-    </section>
+    </LandingParallax>
   );
 }
 
@@ -552,7 +565,7 @@ export function PopularIndustries() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <Link href={`/jobs?industryId=${industry.id}`}>
-                  <Card className="group h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-primary/50">
+                  <Card className="group h-full cursor-pointer overflow-hidden border-zinc-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-primary/50 rounded-bl-none rounded-tr-none">
                     <CardContent className="flex flex-col items-center justify-center p-8 text-center">
                       <div className="mb-6 rounded-2xl bg-zinc-50 p-4 transition-colors group-hover:bg-primary/5">
                         <Building2 className="h-8 w-8 text-zinc-400 transition-colors group-hover:text-primary" />

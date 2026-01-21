@@ -13,7 +13,8 @@ import {
 } from '@tanstack/react-table';
 import { useBreadcrumbs, useAuth } from '@/context';
 import { getAdminApplications, updateApplicationStatus, archiveApplication, type Application } from '@/lib/applications';
-import { getAdminIndustries, type Industry } from '@/lib/industries';
+import { useAdminIndustries } from '@/hooks';
+import type { Industry } from '@/lib/industries';
 import { PERMISSIONS } from '@/shared/validators/permissions';
 import { AccessDenied } from '@/components/admin/access-denied';
 import { Button } from '@/components/ui/button';
@@ -138,10 +139,7 @@ export default function ApplicationsPage() {
   });
 
   // Fetch industries
-  const { data: industriesData } = useQuery({
-    queryKey: ['industries', 'admin'],
-    queryFn: getAdminIndustries,
-  });
+  const { data: industriesArray } = useAdminIndustries();
 
   const updateMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: string; status: Application['status']; notes?: string }) =>
@@ -174,7 +172,7 @@ export default function ApplicationsPage() {
   });
 
   const applications: Application[] = applicationsData?.applications || [];
-  const industries: Industry[] = industriesData?.industries || [];
+  const industries: Industry[] = industriesArray || [];
 
   // Group applications by industry (only applications with an industry)
   const applicationsByIndustry = useMemo(() => {

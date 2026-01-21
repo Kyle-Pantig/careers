@@ -38,7 +38,9 @@ export function useAdminIndustries() {
     queryKey: industryKeys.admin(),
     queryFn: async () => {
       const result = await getAdminIndustries();
-      return result.industries ?? [];
+      // Handle both { industries: [...] } and [...]
+      if (Array.isArray(result)) return result;
+      return result?.industries ?? [];
     },
   });
 }

@@ -10,10 +10,10 @@ interface RouteGuardProps {
   redirectTo?: string;
 }
 
-export function RouteGuard({ 
-  children, 
-  allowedRoles = [], 
-  redirectTo = '/login' 
+export function RouteGuard({
+  children,
+  allowedRoles = [],
+  redirectTo = '/login'
 }: RouteGuardProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -82,10 +82,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 // Guest only guard - redirects authenticated users away from auth pages
-export function GuestGuard({ 
-  children, 
-  redirectTo = '/' 
-}: { 
+export function GuestGuard({
+  children,
+  redirectTo = '/'
+}: {
   children: React.ReactNode;
   redirectTo?: string;
 }) {

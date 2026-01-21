@@ -22,9 +22,9 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/context';
 import { cn } from '@/lib/utils';
-import { 
-  Menu, 
-  Briefcase, 
+import {
+  Menu,
+  Briefcase,
   UserCircle,
   LogOut,
   LayoutDashboard,
@@ -165,7 +165,7 @@ export function CareersHeader() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="cursor-pointer text-destructive focus:text-destructive"
                   onClick={handleLogout}
                 >
@@ -204,7 +204,7 @@ export function CareersHeader() {
                   Careers Platform
                 </SheetTitle>
               </SheetHeader>
-              
+
               <div className="mt-8 flex flex-col gap-4">
                 {/* Mobile Navigation */}
                 <nav className="flex flex-col gap-1">
@@ -265,7 +265,7 @@ export function CareersHeader() {
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
-                    
+
                     <nav className="flex flex-col gap-1">
                       {!isAdmin && (
                         <Link
@@ -311,9 +311,9 @@ export function CareersHeader() {
                     </nav>
 
                     <div className="my-2 h-px bg-zinc-200" />
-                    
-                    <Button 
-                      variant="ghost" 
+
+                    <Button
+                      variant="ghost"
                       className="justify-start gap-3 px-3 py-3 text-base font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
                       onClick={handleLogout}
                     >
