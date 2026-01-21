@@ -34,8 +34,8 @@ export default function PrivacyPolicyPage() {
               1. Introduction
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              Welcome to Careers. We respect your privacy and are committed to protecting your personal data. 
-              This privacy policy explains how we collect, use, disclose, and safeguard your information when 
+              Welcome to Careers. We respect your privacy and are committed to protecting your personal data.
+              This privacy policy explains how we collect, use, disclose, and safeguard your information when
               you use our career platform and services.
             </p>
           </section>
@@ -95,8 +95,8 @@ export default function PrivacyPolicyPage() {
               5. Data Security
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We implement appropriate technical and organizational measures to protect your personal data 
-              against unauthorized access, alteration, disclosure, or destruction. This includes encryption, 
+              We implement appropriate technical and organizational measures to protect your personal data
+              against unauthorized access, alteration, disclosure, or destruction. This includes encryption,
               secure servers, and regular security assessments.
             </p>
           </section>
@@ -106,8 +106,8 @@ export default function PrivacyPolicyPage() {
               6. Data Retention
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We retain your personal data for as long as necessary to fulfill the purposes outlined in this 
-              policy, unless a longer retention period is required by law. You may request deletion of your 
+              We retain your personal data for as long as necessary to fulfill the purposes outlined in this
+              policy, unless a longer retention period is required by law. You may request deletion of your
               account and associated data at any time.
             </p>
           </section>
@@ -134,8 +134,8 @@ export default function PrivacyPolicyPage() {
               8. Cookies and Tracking
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We use cookies and similar tracking technologies to enhance your experience on our platform. 
-              These help us understand how you use our services, remember your preferences, and improve 
+              We use cookies and similar tracking technologies to enhance your experience on our platform.
+              These help us understand how you use our services, remember your preferences, and improve
               functionality. You can manage cookie preferences through your browser settings.
             </p>
           </section>
@@ -145,8 +145,8 @@ export default function PrivacyPolicyPage() {
               9. Changes to This Policy
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We may update this privacy policy from time to time. We will notify you of any changes by 
-              posting the new policy on this page and updating the &quot;Last updated&quot; date. We encourage 
+              We may update this privacy policy from time to time. We will notify you of any changes by
+              posting the new policy on this page and updating the &quot;Last updated&quot; date. We encourage
               you to review this policy periodically.
             </p>
           </section>
@@ -160,7 +160,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="mt-4 p-4 bg-zinc-50 rounded-lg">
               <p className="text-zinc-700">
-                <strong>Email:</strong> privacy@careers.com
+                <strong>Email:</strong> buildwithkyle@kylepantig.site
               </p>
             </div>
           </section>

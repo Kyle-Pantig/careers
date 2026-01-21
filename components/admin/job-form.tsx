@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,11 +82,12 @@ export function JobForm({ job, mode }: JobFormProps) {
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     control,
     formState: { errors },
-  } = useForm({
-    resolver: zodResolver(jobSchema),
+  } = useForm<JobFormData>({
+    resolver: zodResolver(jobSchema) as Resolver<JobFormData>,
     defaultValues: {
       title: job?.title || '',
       description: job?.description || '',
@@ -102,9 +103,9 @@ export function JobForm({ job, mode }: JobFormProps) {
       salaryCurrency: job?.salaryCurrency || 'USD',
       salaryPeriod: job?.salaryPeriod || 'YEARLY',
       isPublished: job?.isPublished ?? false,
-      expiresAt: job?.expiresAt || '',
-      customApplicationFields: (job?.customApplicationFields as CustomApplicationField[] | null | undefined) ?? [],
-    } as JobFormData,
+      expiresAt: job?.expiresAt ?? undefined,
+      customApplicationFields: (job?.customApplicationFields as CustomApplicationField[]) ?? [],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -339,10 +340,10 @@ export function JobForm({ job, mode }: JobFormProps) {
                         min={0}
                         max={50}
                         placeholder="0"
-                        value={watchExperienceMin ?? ''}
+                        value={watchExperienceMin !== null && watchExperienceMin !== undefined ? String(watchExperienceMin) : ''}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setValue('experienceMin', val === '' ? '' : parseInt(val) || 0);
+                          setValue('experienceMin', val === '' ? 0 : parseInt(val) || 0);
                         }}
                         disabled={isLoading}
                       />
@@ -355,7 +356,7 @@ export function JobForm({ job, mode }: JobFormProps) {
                         min={0}
                         max={50}
                         placeholder="No max"
-                        value={watchExperienceMax ?? ''}
+                        value={watchExperienceMax !== null && watchExperienceMax !== undefined ? String(watchExperienceMax) : ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           setValue('experienceMax', val ? parseInt(val) : null);
@@ -433,11 +434,11 @@ export function JobForm({ job, mode }: JobFormProps) {
                       <div className="space-y-1">
                         <Label className="text-xs">Type</Label>
                         <Select
-                          value={watch(`customApplicationFields.${i}.type`)}
+                          value={watch(`customApplicationFields.${i}.type`) as CustomFieldType}
                           onValueChange={(val: CustomFieldType) => {
                             setValue(`customApplicationFields.${i}.type`, val);
                             if (val === 'select') {
-                              const opts = watch(`customApplicationFields.${i}.options`) as string[] | undefined;
+                              const opts = getValues(`customApplicationFields.${i}.options`) as string[] | undefined;
                               if (!opts || opts.length === 0) {
                                 setValue(`customApplicationFields.${i}.options`, ['Yes', 'No']);
                               }
@@ -681,10 +682,10 @@ export function JobForm({ job, mode }: JobFormProps) {
                         min={0}
                         placeholder="0"
                         className="pl-8"
-                        value={watchSalaryMin ?? ''}
+                        value={watchSalaryMin !== null && watchSalaryMin !== undefined ? String(watchSalaryMin) : ''}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setValue('salaryMin', val ? parseInt(val) : null);
+                          setValue('salaryMin', val ? (parseInt(val) || 0) : null);
                         }}
                         disabled={isLoading}
                       />
@@ -702,10 +703,10 @@ export function JobForm({ job, mode }: JobFormProps) {
                         min={0}
                         placeholder="No max"
                         className="pl-8"
-                        value={watchSalaryMax ?? ''}
+                        value={watchSalaryMax !== null && watchSalaryMax !== undefined ? String(watchSalaryMax) : ''}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setValue('salaryMax', val ? parseInt(val) : null);
+                          setValue('salaryMax', val ? (parseInt(val) || 0) : null);
                         }}
                         disabled={isLoading}
                       />

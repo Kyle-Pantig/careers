@@ -34,8 +34,8 @@ export default function TermsOfServicePage() {
               1. Acceptance of Terms
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              By accessing or using the Careers platform, you agree to be bound by these Terms of Service 
-              and all applicable laws and regulations. If you do not agree with any of these terms, you 
+              By accessing or using the Careers platform, you agree to be bound by these Terms of Service
+              and all applicable laws and regulations. If you do not agree with any of these terms, you
               are prohibited from using or accessing this platform.
             </p>
           </section>
@@ -45,7 +45,7 @@ export default function TermsOfServicePage() {
               2. Use of Service
             </h2>
             <p className="text-zinc-600 leading-relaxed mb-4">
-              You agree to use the Careers platform only for lawful purposes and in accordance with these 
+              You agree to use the Careers platform only for lawful purposes and in accordance with these
               Terms. You agree not to:
             </p>
             <ul className="list-disc pl-6 text-zinc-600 space-y-2">
@@ -74,7 +74,7 @@ export default function TermsOfServicePage() {
               <li>Notify us immediately of any unauthorized access</li>
             </ul>
             <p className="text-zinc-600 leading-relaxed mt-4">
-              We reserve the right to suspend or terminate accounts that violate these terms or engage 
+              We reserve the right to suspend or terminate accounts that violate these terms or engage
               in fraudulent activity.
             </p>
           </section>
@@ -100,9 +100,9 @@ export default function TermsOfServicePage() {
               5. Intellectual Property
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              The Careers platform and its original content, features, and functionality are owned by us 
-              and are protected by international copyright, trademark, and other intellectual property laws. 
-              You may not reproduce, distribute, modify, or create derivative works without our prior 
+              The Careers platform and its original content, features, and functionality are owned by us
+              and are protected by international copyright, trademark, and other intellectual property laws.
+              You may not reproduce, distribute, modify, or create derivative works without our prior
               written consent.
             </p>
           </section>
@@ -112,9 +112,9 @@ export default function TermsOfServicePage() {
               6. User Content
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              By submitting content to our platform (including resumes, cover letters, and other materials), 
-              you grant us a non-exclusive, worldwide, royalty-free license to use, store, and process that 
-              content for the purpose of providing our services. You retain ownership of your content and 
+              By submitting content to our platform (including resumes, cover letters, and other materials),
+              you grant us a non-exclusive, worldwide, royalty-free license to use, store, and process that
+              content for the purpose of providing our services. You retain ownership of your content and
               may delete it at any time.
             </p>
           </section>
@@ -128,7 +128,7 @@ export default function TermsOfServicePage() {
               <Link href="/privacy" className="text-zinc-900 underline hover:text-zinc-700">
                 Privacy Policy
               </Link>
-              , which describes how we collect, use, and protect your personal information. By using the 
+              , which describes how we collect, use, and protect your personal information. By using the
               platform, you consent to the practices described in the Privacy Policy.
             </p>
           </section>
@@ -138,7 +138,7 @@ export default function TermsOfServicePage() {
               8. Disclaimers
             </h2>
             <p className="text-zinc-600 leading-relaxed mb-4">
-              The platform is provided on an &quot;as is&quot; and &quot;as available&quot; basis. We make no warranties, 
+              The platform is provided on an &quot;as is&quot; and &quot;as available&quot; basis. We make no warranties,
               expressed or implied, regarding:
             </p>
             <ul className="list-disc pl-6 text-zinc-600 space-y-2">
@@ -154,8 +154,8 @@ export default function TermsOfServicePage() {
               9. Limitation of Liability
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              To the maximum extent permitted by law, we shall not be liable for any indirect, incidental, 
-              special, consequential, or punitive damages, including but not limited to loss of profits, 
+              To the maximum extent permitted by law, we shall not be liable for any indirect, incidental,
+              special, consequential, or punitive damages, including but not limited to loss of profits,
               data, or other intangible losses, resulting from your use of or inability to use the platform.
             </p>
           </section>
@@ -165,8 +165,8 @@ export default function TermsOfServicePage() {
               10. Indemnification
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              You agree to indemnify and hold us harmless from any claims, damages, losses, or expenses 
-              (including legal fees) arising from your use of the platform, violation of these terms, or 
+              You agree to indemnify and hold us harmless from any claims, damages, losses, or expenses
+              (including legal fees) arising from your use of the platform, violation of these terms, or
               infringement of any rights of another party.
             </p>
           </section>
@@ -176,8 +176,8 @@ export default function TermsOfServicePage() {
               11. Modifications to Terms
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We reserve the right to modify these Terms of Service at any time. Changes will be effective 
-              immediately upon posting to the platform. Your continued use of the platform after any changes 
+              We reserve the right to modify these Terms of Service at any time. Changes will be effective
+              immediately upon posting to the platform. Your continued use of the platform after any changes
               constitutes acceptance of the new terms.
             </p>
           </section>
@@ -187,8 +187,8 @@ export default function TermsOfServicePage() {
               12. Termination
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              We may terminate or suspend your access to the platform immediately, without prior notice or 
-              liability, for any reason, including breach of these Terms. Upon termination, your right to 
+              We may terminate or suspend your access to the platform immediately, without prior notice or
+              liability, for any reason, including breach of these Terms. Upon termination, your right to
               use the platform will cease immediately.
             </p>
           </section>
@@ -198,8 +198,8 @@ export default function TermsOfServicePage() {
               13. Governing Law
             </h2>
             <p className="text-zinc-600 leading-relaxed">
-              These Terms shall be governed by and construed in accordance with applicable laws, without 
-              regard to conflict of law principles. Any disputes arising from these terms shall be resolved 
+              These Terms shall be governed by and construed in accordance with applicable laws, without
+              regard to conflict of law principles. Any disputes arising from these terms shall be resolved
               through appropriate legal channels.
             </p>
           </section>
@@ -213,7 +213,7 @@ export default function TermsOfServicePage() {
             </p>
             <div className="mt-4 p-4 bg-zinc-50 rounded-lg">
               <p className="text-zinc-700">
-                <strong>Email:</strong> legal@careers.com
+                <strong>Email:</strong> buildwithkyle@kylepantig.site
               </p>
             </div>
           </section>
