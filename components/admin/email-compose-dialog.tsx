@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { 
-  sendApplicantEmail, 
+import {
+  sendApplicantEmail,
   sendTemplateEmailToApplicant,
   type EmailTemplateType,
   type EmailTemplateData,
@@ -31,10 +31,10 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Mail, 
-  Send, 
-  FileText, 
+import {
+  Mail,
+  Send,
+  FileText,
   Calendar,
   MapPin,
   Video,
@@ -64,42 +64,42 @@ interface EmailComposeDialogProps {
   applicationStatus?: string;
 }
 
-const EMAIL_TEMPLATES: { 
-  type: EmailTemplateType; 
-  label: string; 
+const EMAIL_TEMPLATES: {
+  type: EmailTemplateType;
+  label: string;
   description: string;
   icon: React.ReactNode;
   color: string;
 }[] = [
-  {
-    type: 'interview_invitation',
-    label: 'Interview Invitation',
-    description: 'Invite the candidate to an interview',
-    icon: <Calendar className="h-5 w-5" />,
-    color: 'text-blue-600 bg-blue-50',
-  },
-  {
-    type: 'rejection',
-    label: 'Application Update',
-    description: 'Politely decline the application',
-    icon: <XCircle className="h-5 w-5" />,
-    color: 'text-red-600 bg-red-50',
-  },
-  {
-    type: 'offer',
-    label: 'Job Offer',
-    description: 'Extend a job offer to the candidate',
-    icon: <UserCheck className="h-5 w-5" />,
-    color: 'text-green-600 bg-green-50',
-  },
-  {
-    type: 'follow_up',
-    label: 'Follow Up',
-    description: 'Send an application status update',
-    icon: <MessageSquare className="h-5 w-5" />,
-    color: 'text-yellow-600 bg-yellow-50',
-  },
-];
+    {
+      type: 'interview_invitation',
+      label: 'Interview Invitation',
+      description: 'Invite the candidate to an interview',
+      icon: <Calendar className="h-5 w-5" />,
+      color: 'text-blue-600 bg-blue-50',
+    },
+    {
+      type: 'rejection',
+      label: 'Application Update',
+      description: 'Politely decline the application',
+      icon: <XCircle className="h-5 w-5" />,
+      color: 'text-red-600 bg-red-50',
+    },
+    {
+      type: 'offer',
+      label: 'Job Offer',
+      description: 'Extend a job offer to the candidate',
+      icon: <UserCheck className="h-5 w-5" />,
+      color: 'text-green-600 bg-green-50',
+    },
+    {
+      type: 'follow_up',
+      label: 'Follow Up',
+      description: 'Send an application status update',
+      icon: <MessageSquare className="h-5 w-5" />,
+      color: 'text-yellow-600 bg-yellow-50',
+    },
+  ];
 
 export function EmailComposeDialog({
   open,
@@ -118,11 +118,11 @@ export function EmailComposeDialog({
   const queryClient = useQueryClient();
   const isHired = applicationStatus === 'hired';
   const [activeTab, setActiveTab] = useState<'compose' | 'template'>(isHired ? 'compose' : 'template');
-  
+
   // Custom email state
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  
+
   // Template state
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplateType | ''>('');
   const [templateData, setTemplateData] = useState<EmailTemplateData>({});
@@ -132,7 +132,7 @@ export function EmailComposeDialog({
   // Pre-fill salary from job data when selecting offer template
   const handleTemplateSelect = (templateType: EmailTemplateType) => {
     setSelectedTemplate(templateType);
-    
+
     // Pre-fill salary fields for offer template
     if (templateType === 'offer' && (jobSalaryMin || jobSalaryMax)) {
       setTemplateData(prev => ({
@@ -170,7 +170,7 @@ export function EmailComposeDialog({
         'follow_up': 'Follow-up email sent successfully',
       };
       toast.success(messages[selectedTemplate] || 'Email sent successfully');
-      
+
       // Refresh application data
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       handleClose();
@@ -246,7 +246,7 @@ export function EmailComposeDialog({
               </TabsList>
             )}
           </div>
-          
+
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {/* Template Tab */}
@@ -255,11 +255,10 @@ export function EmailComposeDialog({
                 {EMAIL_TEMPLATES.map((template) => (
                   <Card
                     key={template.type}
-                    className={`cursor-pointer transition-all hover:shadow-md ${
-                      selectedTemplate === template.type 
-                        ? 'ring-2 ring-primary' 
+                    className={`cursor-pointer transition-all hover:shadow-md ${selectedTemplate === template.type
+                        ? 'ring-2 ring-primary'
                         : 'hover:border-primary/50'
-                    }`}
+                      }`}
                     onClick={() => handleTemplateSelect(template.type)}
                   >
                     <CardHeader className="p-4">
@@ -332,150 +331,150 @@ export function EmailComposeDialog({
                         </Select>
                       </div>
                       <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-xs">
+                          <MapPin className="h-3 w-3" />
+                          Location / Link
+                        </Label>
+                        <Input
+                          placeholder="Office address or meeting link"
+                          value={templateData.interviewLocation || ''}
+                          onChange={(e) => setTemplateData({ ...templateData, interviewLocation: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Additional Notes (optional)</Label>
+                      <Textarea
+                        placeholder="Any additional information..."
+                        value={templateData.additionalNotes || ''}
+                        onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedTemplate === 'offer' && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Job Offer Details</CardTitle>
+                    <CardDescription className="text-xs">
+                      Position: <span className="font-medium text-foreground">{jobTitle}</span> ({jobNumber})
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Show job salary range as reference */}
+                    {(jobSalaryMin || jobSalaryMax) && (
+                      <div className="bg-muted/50 border rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Job Posting Salary Range:</p>
+                        <p className="text-sm font-medium">
+                          {(() => {
+                            const symbols: Record<string, string> = { PHP: '₱', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', CAD: 'C$', SGD: 'S$' };
+                            const periods: Record<string, string> = { HOURLY: '/hr', MONTHLY: '/mo', YEARLY: '/yr' };
+                            const symbol = symbols[jobSalaryCurrency || 'PHP'] || '₱';
+                            const period = periods[jobSalaryPeriod || 'MONTHLY'] || '/mo';
+                            if (jobSalaryMin && jobSalaryMax) {
+                              return `${symbol}${jobSalaryMin.toLocaleString()} - ${symbol}${jobSalaryMax.toLocaleString()} ${period}`;
+                            }
+                            return `${symbol}${(jobSalaryMax || jobSalaryMin)?.toLocaleString()} ${period}`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-2">
                       <Label className="flex items-center gap-2 text-xs">
-                        <MapPin className="h-3 w-3" />
-                        Location / Link
+                        <DollarSign className="h-3 w-3" />
+                        Salary Offer
                       </Label>
-                      <Input
-                        placeholder="Office address or meeting link"
-                        value={templateData.interviewLocation || ''}
-                        onChange={(e) => setTemplateData({ ...templateData, interviewLocation: e.target.value })}
-                      />
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <Select
+                          value={templateData.salaryCurrency || 'PHP'}
+                          onValueChange={(v) => setTemplateData({ ...templateData, salaryCurrency: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PHP">PHP (₱)</SelectItem>
+                            <SelectItem value="USD">USD ($)</SelectItem>
+                            <SelectItem value="EUR">EUR (€)</SelectItem>
+                            <SelectItem value="GBP">GBP (£)</SelectItem>
+                            <SelectItem value="JPY">JPY (¥)</SelectItem>
+                            <SelectItem value="AUD">AUD ($)</SelectItem>
+                            <SelectItem value="CAD">CAD ($)</SelectItem>
+                            <SelectItem value="SGD">SGD ($)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          value={templateData.salaryAmount || ''}
+                          onChange={(e) => setTemplateData({ ...templateData, salaryAmount: e.target.value })}
+                          className="sm:col-span-1"
+                        />
+                        <Select
+                          value={templateData.salaryPeriod || 'MONTHLY'}
+                          onValueChange={(v) => setTemplateData({ ...templateData, salaryPeriod: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="HOURLY">Per Hour</SelectItem>
+                            <SelectItem value="MONTHLY">Per Month</SelectItem>
+                            <SelectItem value="YEARLY">Per Year</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Additional Notes (optional)</Label>
-                    <Textarea
-                      placeholder="Any additional information..."
-                      value={templateData.additionalNotes || ''}
-                      onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {selectedTemplate === 'offer' && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Job Offer Details</CardTitle>
-                  <CardDescription className="text-xs">
-                    Position: <span className="font-medium text-foreground">{jobTitle}</span> ({jobNumber})
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Show job salary range as reference */}
-                  {(jobSalaryMin || jobSalaryMax) && (
-                    <div className="bg-muted/50 border rounded-lg p-3">
-                      <p className="text-xs text-muted-foreground mb-1">Job Posting Salary Range:</p>
-                      <p className="text-sm font-medium">
-                        {(() => {
-                          const symbols: Record<string, string> = { PHP: '₱', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AUD: 'A$', CAD: 'C$', SGD: 'S$' };
-                          const periods: Record<string, string> = { HOURLY: '/hr', MONTHLY: '/mo', YEARLY: '/yr' };
-                          const symbol = symbols[jobSalaryCurrency || 'PHP'] || '₱';
-                          const period = periods[jobSalaryPeriod || 'MONTHLY'] || '/mo';
-                          if (jobSalaryMin && jobSalaryMax) {
-                            return `${symbol}${jobSalaryMin.toLocaleString()} - ${symbol}${jobSalaryMax.toLocaleString()} ${period}`;
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs">
+                        <Briefcase className="h-3 w-3" />
+                        Proposed Start Date (optional)
+                      </Label>
+                      <DateTimePicker
+                        value={startDate}
+                        onChange={(date) => {
+                          setStartDate(date || undefined);
+                          if (date) {
+                            setTemplateData({
+                              ...templateData,
+                              startDate: format(date, 'MMMM d, yyyy'),
+                            });
+                          } else {
+                            setTemplateData({
+                              ...templateData,
+                              startDate: undefined,
+                            });
                           }
-                          return `${symbol}${(jobSalaryMax || jobSalaryMin)?.toLocaleString()} ${period}`;
-                        })()}
-                      </p>
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs">
-                      <DollarSign className="h-3 w-3" />
-                      Salary Offer
-                    </Label>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <Select
-                        value={templateData.salaryCurrency || 'PHP'}
-                        onValueChange={(v) => setTemplateData({ ...templateData, salaryCurrency: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PHP">PHP (₱)</SelectItem>
-                          <SelectItem value="USD">USD ($)</SelectItem>
-                          <SelectItem value="EUR">EUR (€)</SelectItem>
-                          <SelectItem value="GBP">GBP (£)</SelectItem>
-                          <SelectItem value="JPY">JPY (¥)</SelectItem>
-                          <SelectItem value="AUD">AUD ($)</SelectItem>
-                          <SelectItem value="CAD">CAD ($)</SelectItem>
-                          <SelectItem value="SGD">SGD ($)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        placeholder="Amount"
-                        value={templateData.salaryAmount || ''}
-                        onChange={(e) => setTemplateData({ ...templateData, salaryAmount: e.target.value })}
-                        className="sm:col-span-1"
+                        }}
                       />
-                      <Select
-                        value={templateData.salaryPeriod || 'MONTHLY'}
-                        onValueChange={(v) => setTemplateData({ ...templateData, salaryPeriod: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="HOURLY">Per Hour</SelectItem>
-                          <SelectItem value="MONTHLY">Per Month</SelectItem>
-                          <SelectItem value="YEARLY">Per Year</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs">
-                      <Briefcase className="h-3 w-3" />
-                      Proposed Start Date (optional)
-                    </Label>
-                    <DateTimePicker
-                      value={startDate}
-                      onChange={(date) => {
-                        setStartDate(date || undefined);
-                        if (date) {
-                          setTemplateData({
-                            ...templateData,
-                            startDate: format(date, 'MMMM d, yyyy'),
-                          });
-                        } else {
-                          setTemplateData({
-                            ...templateData,
-                            startDate: undefined,
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Additional Notes (optional)</Label>
-                    <Textarea
-                      placeholder="Benefits, perks, or any additional information..."
-                      value={templateData.additionalNotes || ''}
-                      onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Additional Notes (optional)</Label>
+                      <Textarea
+                        placeholder="Benefits, perks, or any additional information..."
+                        value={templateData.additionalNotes || ''}
+                        onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            {selectedTemplate === 'follow_up' && (
-              <div className="space-y-2">
-                <Label className="text-sm">Additional Notes (optional)</Label>
-                <Textarea
-                  placeholder="Any additional information to include in the email..."
-                  value={templateData.additionalNotes || ''}
-                  onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
-                  rows={4}
-                />
-              </div>
-            )}
+              {selectedTemplate === 'follow_up' && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Additional Notes (optional)</Label>
+                  <Textarea
+                    placeholder="Any additional information to include in the email..."
+                    value={templateData.additionalNotes || ''}
+                    onChange={(e) => setTemplateData({ ...templateData, additionalNotes: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+              )}
             </TabsContent>
 
             {/* Compose Tab */}
@@ -488,7 +487,7 @@ export function EmailComposeDialog({
                   className="bg-muted"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Regarding</Label>
                 <Input
@@ -529,7 +528,7 @@ export function EmailComposeDialog({
               <Button
                 onClick={activeTab === 'template' ? handleSendTemplateEmail : handleSendCustomEmail}
                 disabled={
-                  activeTab === 'template' 
+                  activeTab === 'template'
                     ? !selectedTemplate || isPending
                     : !subject.trim() || !message.trim() || isPending
                 }

@@ -46,6 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCallback, useEffect, useState } from 'react';
 
 interface RichTextEditorProps {
@@ -158,7 +159,7 @@ function EditorToolbar({ editor, disabled, onOpenLinkDialog }: EditorToolbarProp
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b p-1">
+      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-0.5 border-b bg-background p-1.5 rounded-t-md">
         {/* Text Formatting */}
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -418,13 +419,15 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'rounded-md border bg-background',
+        'relative flex flex-col rounded-md border bg-background overflow-hidden',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
     >
       <EditorToolbar editor={editor} disabled={disabled} onOpenLinkDialog={openLinkDialog} />
-      <EditorContent editor={editor} />
+      <div className="flex-1 w-full max-h-[500px] overflow-y-auto custom-scrollbar">
+        <EditorContent editor={editor} />
+      </div>
       <LinkDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
