@@ -203,7 +203,7 @@ export default function EmailTemplatesPage() {
       '{{interviewType}}': 'Video Call (Google Meet)',
       '{{interviewLocation}}': 'https://meet.google.com/abc-defg-hij',
       '{{salaryDisplay}}': '₱80,000 per month',
-      '{{startDate}}': 'February 1, 2026',
+      '{{startDate}}': 'February 1, 2026 9:00 AM',
       '{{additionalNotes}}': 'Please bring a valid ID.',
     };
 

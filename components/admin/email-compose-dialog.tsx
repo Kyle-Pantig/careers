@@ -256,8 +256,8 @@ export function EmailComposeDialog({
                   <Card
                     key={template.type}
                     className={`cursor-pointer transition-all hover:shadow-md ${selectedTemplate === template.type
-                        ? 'ring-2 ring-primary'
-                        : 'hover:border-primary/50'
+                      ? 'ring-2 ring-primary'
+                      : 'hover:border-primary/50'
                       }`}
                     onClick={() => handleTemplateSelect(template.type)}
                   >
@@ -440,7 +440,7 @@ export function EmailComposeDialog({
                           if (date) {
                             setTemplateData({
                               ...templateData,
-                              startDate: format(date, 'MMMM d, yyyy'),
+                              startDate: format(date, 'MMMM d, yyyy h:mm a'),
                             });
                           } else {
                             setTemplateData({
